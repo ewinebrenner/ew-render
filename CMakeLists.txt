@@ -22,6 +22,7 @@ include(external/glfw.cmake)
 include(external/glew.cmake)
 include(external/imgui.cmake)
 include(external/assimp.cmake)
+include(external/glm.cmake)
 
 # add executable
 # gather all header (h,hpp) files for demo
@@ -46,4 +47,4 @@ add_executable(demo ${DEMO_SRC} ${DEMO_INCLUDE})
 
 find_package(OpenGL REQUIRED)
 
-target_link_libraries(demo PUBLIC glew IMGUI assimp)
+target_link_libraries(demo PUBLIC glew IMGUI assimp glm)
