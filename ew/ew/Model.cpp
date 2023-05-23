@@ -3,7 +3,7 @@
 
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
-#include <vector>
+#include <assimp/postprocess.h>
 
 void ew::Model::init() {
 	if (m_initialized)
@@ -12,7 +12,9 @@ void ew::Model::init() {
 	glCreateVertexArrays(1, &m_vao);
 	glBindVertexArray(m_vao);
 	glGenBuffers(1, &m_vbo);
+	glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
 	glGenBuffers(1, &m_ebo);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ebo);
 
 	//POSITION
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (const void*)(offsetof(Vertex, position)));
@@ -36,7 +38,7 @@ void ew::Model::init() {
 bool ew::Model::loadFromFile(const char* filePath)
 {
 	Assimp::Importer importer;
-	const aiScene* scene = importer.ReadFile(filePath, 0);
+	const aiScene* scene = importer.ReadFile(filePath, aiProcess_Triangulate );
 	if (scene == nullptr) {
 		printf("Failed to load file %s", filePath);
 		return false;
@@ -54,10 +56,23 @@ bool ew::Model::loadFromFile(const char* filePath)
 	int numVertices = mesh->mNumVertices;
 	std::vector<Vertex> vertices;
 	vertices.reserve(numVertices);
+
 	for (size_t i = 0; i < numVertices; i++)
 	{
+		aiVector3D aiPos = mesh->mVertices[i];
+
 		Vertex v;
-		v.position = glm::vec3(mesh->mVertices[0].x, mesh->mVertices[0].y, mesh->mVertices[0].z);
+		v.position = glm::vec3(aiPos.x, aiPos.y, aiPos.z);
+		if (mesh->HasNormals())
+		{
+			aiVector3D aiNormal = mesh->mNormals[i];
+			v.normal = glm::vec3(aiNormal.x, aiNormal.y, aiNormal.z);
+		}
+		if (mesh->HasTextureCoords(0)) {
+			aiVector3D aiUV = mesh->mTextureCoords[0][i];
+			v.uv = glm::vec2(aiUV.x, aiUV.y);
+		}
+
 		vertices.push_back(v);
 	}
 
@@ -73,7 +88,11 @@ bool ew::Model::loadFromFile(const char* filePath)
 		}
 	}
 
+	m_vertices = vertices;
+	m_indices = indices;
+
 	glBindVertexArray(m_vao);
+
 	glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * numVertices, vertices.data(), GL_STATIC_DRAW);
 
@@ -81,7 +100,10 @@ bool ew::Model::loadFromFile(const char* filePath)
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * indices.size(), indices.data(), GL_STATIC_DRAW);
 
 	glBindVertexArray(0);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 	return true;
+}
+
+void ew::Model::draw() {
+	glBindVertexArray(m_vao);
+	glDrawElements(GL_TRIANGLES, m_indices.size(), GL_UNSIGNED_INT, 0);
 }

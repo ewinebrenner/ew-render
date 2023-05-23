@@ -1,6 +1,8 @@
 #pragma once
 #include <glm/glm.hpp>
 
+#include <vector>
+
 namespace ew {
 	struct Vertex {
 		glm::vec3 position;
@@ -12,9 +14,12 @@ namespace ew {
 	public:
 		Model() {};
 		bool loadFromFile(const char* filePath);
+		void draw();
 	private:
-		unsigned int m_vao, m_vbo, m_ebo;
-		bool m_initialized;
+		unsigned int m_vao = 0, m_vbo = 0, m_ebo = 0;
+		bool m_initialized = false;
 		void init();
+		std::vector<Vertex> m_vertices;
+		std::vector<unsigned int> m_indices;
 	};
 }

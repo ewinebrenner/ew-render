@@ -14,10 +14,11 @@
 #include <glm/gtx/transform.hpp>
 
 #include <ew/Model.h>
+#include <ew/Shader.h>
 
 const int SCREEN_WIDTH = 1080;
 const int SCREEN_HEIGHT = 720;
-bool show_demo_window = true;
+bool show_demo_window = false;
 
 int main() {
 	printf("Initializing...");
@@ -43,13 +44,35 @@ int main() {
 
 	ew::Model cubeModel;
 	cubeModel.loadFromFile(cubeModelPath);
-	
+	printf("successful!\n");
+
+	ew::Shader shader("../../../assets/shaders/unlit.vert", "../../../assets/shaders/unlit.frag");
+
+	//Rendering config
+	glEnable(GL_DEPTH_TEST);
+	glCullFace(GL_BACK);
+
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
 
 		//START DRAWING
-		glClearColor(0.3f, 0.3f, 0.5f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT);
+		glClearColor(0.1f, 0.2f, 0.3f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		glm::vec3 camPos = glm::vec3(0, 0, -10.0f);
+		glm::mat4 proj = glm::perspective(glm::radians(60.0f), (float)SCREEN_WIDTH / SCREEN_HEIGHT, 0.01f, 100.0f);
+		glm::mat4 lookAt = glm::lookAt(camPos, glm::vec3(0), glm::vec3(0, 1, 0));
+
+		shader.use();
+
+		glm::mat4 model = glm::mat4(1);
+		model = glm::rotate(model, (float)glfwGetTime() * 2.0f, glm::vec3(0.2f, 1.0f, 0));
+
+		shader.setMat4("_Model", model);
+		shader.setMat4("_View", lookAt);
+		shader.setMat4("_Projection", proj);
+
+		cubeModel.draw();
 
 		//DRAW IMGUI
 		ImGui_ImplOpenGL3_NewFrame();
@@ -60,7 +83,9 @@ int main() {
 		ImGui::Text("Hello");
 		ImGui::End();
 
-		ImGui::ShowDemoWindow(&show_demo_window);
+		if (show_demo_window) {
+			ImGui::ShowDemoWindow(&show_demo_window);
+		}
 
 		ImGui::Render();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
