@@ -10,6 +10,11 @@
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 
+#include <glm/glm.hpp>
+#include <glm/gtx/transform.hpp>
+
+#include <ew/Model.h>
+
 const int SCREEN_WIDTH = 1080;
 const int SCREEN_HEIGHT = 720;
 bool show_demo_window = true;
@@ -34,15 +39,11 @@ int main() {
 	printf("successful!\n");
 
 	printf("Loading models...");
-	static const char* cubeModelPath = "../assets/models/cube.obj";
-	Assimp::Importer importer;
-	const aiScene* scene = importer.ReadFile(cubeModelPath, 0);
-	if (scene == nullptr) {
-		printf("Failed to load file %s", cubeModelPath);
-		return 1;
-	}
-	printf("successful!\n");
+	static const char* cubeModelPath = "../../../assets/models/cube.obj";
 
+	ew::Model cubeModel;
+	cubeModel.loadFromFile(cubeModelPath);
+	
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
 

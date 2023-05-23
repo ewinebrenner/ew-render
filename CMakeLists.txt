@@ -24,27 +24,5 @@ include(external/imgui.cmake)
 include(external/assimp.cmake)
 include(external/glm.cmake)
 
-# add executable
-# gather all header (h,hpp) files for demo
-file(
- GLOB
- DEMO_INCLUDE
- CONFIGURE_DEPENDS
- ${CMAKE_CURRENT_SOURCE_DIR}/src/*.h
- ${CMAKE_CURRENT_SOURCE_DIR}/src/*.hpp
-)
-
-# gather all source (c,cpp) files for demo
-file(
- GLOB
- DEMO_SRC
- CONFIGURE_DEPENDS
- ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c
- ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
-)
-
-add_executable(demo ${DEMO_SRC} ${DEMO_INCLUDE})
-
-find_package(OpenGL REQUIRED)
-
-target_link_libraries(demo PUBLIC glew IMGUI assimp glm)
+add_subdirectory(ew)
+add_subdirectory(examples/helloTriangle)

@@ -1,0 +1,26 @@
+file(
+ GLOB_RECURSE EW_INC CONFIGURE_DEPENDS
+ RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
+ *.h *.hpp
+)
+
+file(
+ GLOB_RECURSE EW_SRC CONFIGURE_DEPENDS
+ RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
+ *.c *.cpp
+)
+
+set(EW_INC_DIR
+ ${CMAKE_CURRENT_SOURCE_DIR}
+ CACHE PATH "EW INCLUDE SOURCE PATH"
+)
+
+add_library(ew STATIC ${EW_SRC} ${EW_INC})
+
+find_package(OpenGL REQUIRED)
+
+target_link_libraries(ew PUBLIC glew IMGUI assimp glm)
+
+install (TARGETS ew DESTINATION lib)
+install (FILES ${EW_INC} DESTINATION include/ew)
+
