@@ -13,10 +13,11 @@ include(external/cpm.cmake)
 include(external/glfw.cmake)
 include(external/glew.cmake)
 include(external/imgui.cmake)
+include(external/assimp.cmake)
 
 # add executable
 add_executable(demo src/main.cpp)
 
 find_package(OpenGL REQUIRED)
 
-target_link_libraries(demo  PUBLIC glew IMGUI)
+target_link_libraries(demo PUBLIC glew IMGUI assimp)

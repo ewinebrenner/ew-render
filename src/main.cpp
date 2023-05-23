@@ -7,6 +7,9 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 
+#include <assimp/Importer.hpp>
+#include <assimp/scene.h>
+
 const int SCREEN_WIDTH = 1080;
 const int SCREEN_HEIGHT = 720;
 bool show_demo_window = true;
@@ -14,6 +17,11 @@ bool show_demo_window = true;
 int main() {
 	printf("Initializing...");
 	assert(glfwInit());
+	if (!glfwInit()) {
+		printf("GLFW failed to init!");
+		return 1;
+	}
+
 	GLFWwindow* window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "OpenGLExample", NULL, NULL);
 	assert(window != nullptr);
 	glfwMakeContextCurrent(window);
@@ -23,7 +31,17 @@ int main() {
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
 	ImGui_ImplOpenGL3_Init("#version 130");
 
-	printf("successful!");
+	printf("successful!\n");
+
+	printf("Loading models...");
+	static const char* cubeModelPath = "../assets/models/cube.obj";
+	Assimp::Importer importer;
+	const aiScene* scene = importer.ReadFile(cubeModelPath, 0);
+	if (scene == nullptr) {
+		printf("Failed to load file %s", cubeModelPath);
+		return 1;
+	}
+	printf("successful!\n");
 
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
