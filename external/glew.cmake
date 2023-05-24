@@ -4,7 +4,7 @@ CPMAddPackage(
         NAME "glew"
         URL "https://github.com/nigels-com/glew/releases/download/glew-2.2.0/glew-2.2.0.tgz"
         SOURCE_SUBDIR "build/cmake"
-        OPTIONS "BUILD_SHARED_LIBS OFF" "BUILD_UTILS OFF" "BUILD_32_BIT OFF" "BUILD_SINGLE_CONTEXT OFF" "GLEW_USE_STATIC_LIBS ON"
+        OPTIONS "BUILD_SHARED_LIBS ON" "BUILD_UTILS OFF" "BUILD_32_BIT OFF" "BUILD_SINGLE_CONTEXT OFF" "GLEW_USE_STATIC_LIBS OFF"
     )
 
     find_package(glew REQUIRED)

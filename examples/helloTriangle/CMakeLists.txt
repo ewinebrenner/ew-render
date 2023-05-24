@@ -14,5 +14,5 @@ file(
 
 install(FILES ${HELLOTRIANGLE_INC} DESTINATION include/helloTriangle)
 add_executable(helloTriangle ${HELLOTRIANGLE_SRC} ${HELLOTRIANGLE_INC})
-target_link_libraries(helloTriangle PUBLIC glew IMGUI assimp glm ew)
+target_link_libraries(helloTriangle PUBLIC ew glew IMGUI glm assimp)
 target_include_directories(helloTriangle PUBLIC ${EW_INC_DIR})
