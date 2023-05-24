@@ -40,13 +40,13 @@ int main() {
 	printf("successful!\n");
 
 	printf("Loading models...");
-	static const char* cubeModelPath = "../../../../assets/models/cube.obj";
+	static const char* cubeModelPath = "assets/cube.obj";
 
 	ew::Model cubeModel;
 	cubeModel.loadFromFile(cubeModelPath);
 	printf("successful!\n");
 
-	ew::Shader shader("../../../../assets/shaders/unlit.vert", "../../../../assets/shaders/unlit.frag");
+	ew::Shader shader("assets/unlit.vert", "assets/unlit.frag");
 
 	//Rendering config
 	glEnable(GL_DEPTH_TEST);

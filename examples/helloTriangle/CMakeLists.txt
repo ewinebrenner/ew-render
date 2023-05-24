@@ -12,7 +12,9 @@ file(
  *.c *.cpp
 )
 
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/assets/ DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/assets/)
+
 install(FILES ${HELLOTRIANGLE_INC} DESTINATION include/helloTriangle)
-add_executable(helloTriangle ${HELLOTRIANGLE_SRC} ${HELLOTRIANGLE_INC})
+add_executable(helloTriangle ${HELLOTRIANGLE_SRC} ${HELLOTRIANGLE_INC} ${HELLOTRIANGLE_ASSETS})
 target_link_libraries(helloTriangle PUBLIC ew glew IMGUI glm assimp)
 target_include_directories(helloTriangle PUBLIC ${EW_INC_DIR})
