@@ -15,6 +15,7 @@
 
 #include <ew/Model.h>
 #include <ew/Shader.h>
+#include <ew/Texture.h>
 
 const int SCREEN_WIDTH = 1080;
 const int SCREEN_HEIGHT = 720;
@@ -40,6 +41,8 @@ int main() {
 	printf("successful!\n");
 
 	printf("Loading models...");
+
+	ew::Texture texture("assets/pavingstones_color.jpg");
 
 	ew::Model cubeModel;
 	bool success = cubeModel.loadFromFile("assets/monkey.obj");
@@ -73,6 +76,9 @@ int main() {
 		shader.setMat4("_View", lookAt);
 		shader.setMat4("_Projection", proj);
 
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, texture.getHandle());
+		shader.setInt("_Texture", 0);
 		cubeModel.draw();
 
 		//DRAW IMGUI
