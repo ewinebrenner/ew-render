@@ -12,9 +12,14 @@ file(
  *.c *.cpp
 )
 
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/assets/ DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/assets/)
+#Copies this helloTriangle's asset folder to bin when it is built
+add_custom_target(copyAssets ALL COMMAND ${CMAKE_COMMAND} -E copy_directory
+${CMAKE_CURRENT_SOURCE_DIR}/assets/
+${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/assets/)
 
 install(FILES ${HELLOTRIANGLE_INC} DESTINATION include/helloTriangle)
 add_executable(helloTriangle ${HELLOTRIANGLE_SRC} ${HELLOTRIANGLE_INC} ${HELLOTRIANGLE_ASSETS})
 target_link_libraries(helloTriangle PUBLIC ew glew IMGUI glm assimp)
 target_include_directories(helloTriangle PUBLIC ${EW_INC_DIR})
+#Trigger asset copy when helloTriangle is built
+add_dependencies(helloTriangle copyAssets)

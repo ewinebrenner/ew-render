@@ -40,11 +40,12 @@ int main() {
 	printf("successful!\n");
 
 	printf("Loading models...");
-	static const char* cubeModelPath = "assets/cube.obj";
 
 	ew::Model cubeModel;
-	cubeModel.loadFromFile(cubeModelPath);
-	printf("successful!\n");
+	bool success = cubeModel.loadFromFile("assets/monkey.obj");
+	if (success) {
+		printf("successful!\n");
+	}
 
 	ew::Shader shader("assets/unlit.vert", "assets/unlit.frag");
 

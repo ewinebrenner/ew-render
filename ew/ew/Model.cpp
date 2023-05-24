@@ -5,36 +5,6 @@
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 
-void ew::Model::init() {
-	if (m_initialized)
-		return;
-
-	glCreateVertexArrays(1, &m_vao);
-	glBindVertexArray(m_vao);
-	glGenBuffers(1, &m_vbo);
-	glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
-	glGenBuffers(1, &m_ebo);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ebo);
-
-	//POSITION
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (const void*)(offsetof(Vertex, position)));
-	glEnableVertexAttribArray(0);
-
-	//NORMAL
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (const void*)(offsetof(Vertex, normal)));
-	glEnableVertexAttribArray(1);
-
-	//UV
-	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (const void*)(offsetof(Vertex, uv)));
-	glEnableVertexAttribArray(2);
-
-	//TANGENT
-	glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (const void*)(offsetof(Vertex, tangent)));
-	glEnableVertexAttribArray(3);
-
-	m_initialized = true;
-}
-
 bool ew::Model::loadFromFile(const char* filePath)
 {
 	Assimp::Importer importer;
@@ -48,9 +18,24 @@ bool ew::Model::loadFromFile(const char* filePath)
 		return false;
 	}
 
-	init();
+	for (size_t i = 0; i < scene->mNumMeshes; i++)
+	{
+		m_meshes.push_back(convertMesh(scene->mMeshes[i]));
+	}
+	
+	return true;
+}
 
-	aiMesh* mesh = scene->mMeshes[0];
+void ew::Model::draw() {
+	size_t numMeshes = m_meshes.size();
+	for (size_t i = 0; i < numMeshes; i++)
+	{
+		m_meshes[i].draw();
+	}
+}
+
+ew::Mesh ew::Model::convertMesh(aiMesh* mesh) {
+	ew::Mesh newMesh;
 
 	//Gather vertices
 	int numVertices = mesh->mNumVertices;
@@ -88,22 +73,6 @@ bool ew::Model::loadFromFile(const char* filePath)
 		}
 	}
 
-	m_vertices = vertices;
-	m_indices = indices;
-
-	glBindVertexArray(m_vao);
-
-	glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * numVertices, vertices.data(), GL_STATIC_DRAW);
-
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ebo);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * indices.size(), indices.data(), GL_STATIC_DRAW);
-
-	glBindVertexArray(0);
-	return true;
-}
-
-void ew::Model::draw() {
-	glBindVertexArray(m_vao);
-	glDrawElements(GL_TRIANGLES, m_indices.size(), GL_UNSIGNED_INT, 0);
+	newMesh.load(vertices, indices);
+	return newMesh;
 }
