@@ -22,6 +22,7 @@ bool ew::Model::loadFromFile(const char* filePath)
 	{
 		m_meshes.push_back(convertMesh(scene->mMeshes[i]));
 	}
+	aiMaterial* mat = scene->mMaterials[0];
 	
 	return true;
 }
@@ -41,7 +42,7 @@ ew::Mesh ew::Model::convertMesh(aiMesh* mesh) {
 	int numVertices = mesh->mNumVertices;
 	std::vector<Vertex> vertices;
 	vertices.reserve(numVertices);
-
+	
 	for (size_t i = 0; i < numVertices; i++)
 	{
 		aiVector3D aiPos = mesh->mVertices[i];

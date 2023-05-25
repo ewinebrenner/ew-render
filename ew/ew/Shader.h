@@ -15,6 +15,7 @@ namespace ew {
 		void setMat4(std::string name, const glm::mat4& value);
 		void setVec2(std::string name, const glm::vec2& value);
 		void setVec3(std::string name, const glm::vec3& value);
+		void setVec4(std::string name, const glm::vec4& value);
 	private:
 		Shader(const Shader& r) = delete;
 		std::string readFile(const std::string& filePath);

@@ -49,6 +49,19 @@ void ew::Shader::setFloat(std::string name, float value)
 	glProgramUniform1f(m_id, glGetUniformLocation(m_id, name.c_str()), value);
 }
 
+void ew::Shader::setVec2(std::string name, const glm::vec2& value)
+{
+	glProgramUniform2f(m_id, glGetUniformLocation(m_id, name.c_str()), value.x, value.y);
+}
+void ew::Shader::setVec3(std::string name, const glm::vec3& value)
+{
+	glProgramUniform3f(m_id, glGetUniformLocation(m_id, name.c_str()), value.x, value.y, value.z);
+}
+void ew::Shader::setVec4(std::string name, const glm::vec4& value)
+{
+	glProgramUniform4f(m_id, glGetUniformLocation(m_id, name.c_str()), value.x, value.y, value.z, value.w);
+}
+
 void ew::Shader::setInt(std::string name, int value)
 {
 	glProgramUniform1i(m_id, glGetUniformLocation(m_id, name.c_str()), value);
@@ -61,17 +74,6 @@ void ew::Shader::setMat3(std::string name, const glm::mat3& value) {
 void ew::Shader::setMat4(std::string name, const glm::mat4& value) {
 	glProgramUniformMatrix4fv(m_id, glGetUniformLocation(m_id, name.c_str()), 1, false, glm::value_ptr(value));
 }
-
-void ew::Shader::setVec3(std::string name, const glm::vec3& value)
-{
-	glProgramUniform3f(m_id, glGetUniformLocation(m_id, name.c_str()), value.x, value.y, value.z);
-}
-
-void ew::Shader::setVec2(std::string name, const glm::vec2& value)
-{
-	glProgramUniform2f(m_id, glGetUniformLocation(m_id, name.c_str()), value.x, value.y);
-}
-
 
 std::string ew::Shader::readFile(const std::string& filePath)
 {

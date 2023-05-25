@@ -16,6 +16,7 @@
 #include <ew/Model.h>
 #include <ew/Shader.h>
 #include <ew/Texture.h>
+#include <ew/Material.h>
 
 const int SCREEN_WIDTH = 1080;
 const int SCREEN_HEIGHT = 720;
@@ -42,15 +43,28 @@ int main() {
 
 	printf("Loading models...");
 
-	ew::Texture texture("assets/pavingstones_color.jpg");
+	ew::Texture tex_paving_stones_color("assets/pavingstones_color.jpg");
+	ew::Texture tex_paving_stones_normal("assets/pavingstones_normal.jpg");
+	ew::Texture tex_bricks_color("assets/bricks_color.jpg");
+	ew::Texture tex_bricks_normal("assets/bricks_normal.jpg");
 
 	ew::Model cubeModel;
-	bool success = cubeModel.loadFromFile("assets/monkey.obj");
+	bool success = cubeModel.loadFromFile("assets/cube.obj");
 	if (success) {
 		printf("successful!\n");
 	}
 
 	ew::Shader shader("assets/unlit.vert", "assets/unlit.frag");
+
+	ew::Material stoneMaterial(&shader);
+	stoneMaterial.setTexture("_Texture", &tex_paving_stones_color);
+	stoneMaterial.setTexture("_NormalMap", &tex_paving_stones_normal);
+
+	ew::Material brickMaterial(&shader);
+	brickMaterial.setTexture("_Texture", &tex_bricks_color);
+	brickMaterial.setTexture("_NormalMap", &tex_bricks_normal);
+
+	ew::Material* material = &brickMaterial;
 
 	//Rendering config
 	glEnable(GL_DEPTH_TEST);
@@ -72,13 +86,10 @@ int main() {
 		glm::mat4 model = glm::mat4(1);
 		model = glm::rotate(model, (float)glfwGetTime() * 2.0f, glm::vec3(0.2f, 1.0f, 0));
 
-		shader.setMat4("_Model", model);
-		shader.setMat4("_View", lookAt);
-		shader.setMat4("_Projection", proj);
-
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, texture.getHandle());
-		shader.setInt("_Texture", 0);
+		material->setMat4("_Model", model);
+		material->setMat4("_View", lookAt);
+		material->setMat4("_Projection", proj);
+		material->updateUniforms();
 		cubeModel.draw();
 
 		//DRAW IMGUI
