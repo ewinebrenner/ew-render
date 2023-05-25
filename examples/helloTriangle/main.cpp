@@ -29,7 +29,7 @@ ew::Camera camera = ew::Camera();
 ew::FlyCamController cameraController = ew::FlyCamController(&camera);
 
 double prevMouseX, prevMouseY;
-bool firstMouse;
+bool firstMouse = true;
 float mouseSensitivity = 0.1f;
 
 int main() {
@@ -106,6 +106,7 @@ int main() {
 		if (firstMouse) {
 			prevMouseX = mouseX;
 			prevMouseY = mouseY;
+			firstMouse = false;
 		}
 	
 		float pitchDelta = (mouseY - prevMouseY) * mouseSensitivity;
