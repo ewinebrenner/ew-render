@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <math.h>
+
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <assert.h>
@@ -20,16 +22,18 @@ float vertices[9] = {
 const char* vertexShaderSource = R"(
 	#version 450
 	layout(location = 0) in vec3 vPos;
+	uniform vec3 Offset;
 	void main(){
-		gl_Position = vec4(vPos,1.0);
+		gl_Position = vec4(vPos + Offset,1.0);
 	}
 )";
 
 const char* fragmentShaderSource = R"(
 	#version 450
 	out vec4 FragColor;
+	uniform vec4 Color;
 	void main(){
-		FragColor = vec4(1.0);
+		FragColor = Color;
 	}
 )";
 
@@ -74,7 +78,7 @@ unsigned int createShaderProgram(const char* vertexShaderSource, const char* fra
 	return shaderProgram;
 }
 
-unsigned int createVAO(float* vertexData) {
+unsigned int createVAO(float* vertexData, int numVertices) {
 	unsigned int vao;
 	glGenVertexArrays(1, &vao);
 	glBindVertexArray(vao);
@@ -84,7 +88,7 @@ unsigned int createVAO(float* vertexData) {
 	glGenBuffers(1, &vbo);
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
 	//Allocate space for + send vertex data to GPU.
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(float)*numVertices*3, vertexData, GL_STATIC_DRAW);
 
 	//Position attribute
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 3, (const void*)0);
@@ -107,15 +111,31 @@ int main() {
 	assert(glewInit() == GLEW_OK);
 
 	unsigned int shader = createShaderProgram(vertexShaderSource, fragmentShaderSource);
-	unsigned int vao = createVAO(vertices);
+	unsigned int vaoA = createVAO(vertices,3);
+	int colorUniformLoc = glGetUniformLocation(shader, "Color");
+	int offsetUniformLoc = glGetUniformLocation(shader, "Offset");
 
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
 		glClearColor(0.3f, 0.4f, 0.9f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
-		glBindVertexArray(vao);
 		glUseProgram(shader);
+
+		glBindVertexArray(vaoA);
+		
+		float time = (float)glfwGetTime();
+		float offsetY = (float)sin(time) * 0.5;
+		float offsetX = (float)cos(time) * 0.5;
+		float r = (float)fabs(sin(time * 2.0));
+
+		glUniform3f(offsetUniformLoc, offsetX, offsetY, 0.0f);
+		glUniform4f(colorUniformLoc, r, 1.0-r, 0.0f, 0.5f);
 		glDrawArrays(GL_TRIANGLES, 0, 3);
+
+	/*	glUniform3f(offsetUniformLoc, 0.2f, 0.2f, 0.0f);
+		glUniform4f(colorUniformLoc, 1.0f, 1.0f, 0.0f, 0.5f);
+		glDrawArrays(GL_TRIANGLES, 0, 3);*/
+
 		glfwSwapBuffers(window);
 	}
 	printf("Shutting down...");
