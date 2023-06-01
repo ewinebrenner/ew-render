@@ -12,28 +12,33 @@
 const int SCREEN_WIDTH = 1080;
 const int SCREEN_HEIGHT = 720;
 
-float vertices[9] = {
-	//x   //y  //z
-	-0.5, -0.5, 0.0, //Bottom left
-	 0.5, -0.5, 0.0, //Bottom right
-	 0.0,  0.5, 0.0  //Top center
+float vertices[21] = {
+	//x   //y  //z   //r  //g  //b  //a
+	-0.5, -0.5, 0.0, 1.0, 0.0, 0.0, 1.0, //Bottom left
+	 0.5, -0.5, 0.0, 0.0, 1.0, 0.0, 1.0, //Bottom right
+	 0.0,  0.5, 0.0, 0.0, 0.0, 1.0, 1.0  //Top center
 };
 
 const char* vertexShaderSource = R"(
 	#version 450
 	layout(location = 0) in vec3 vPos;
-	uniform vec3 Offset;
+	layout(location = 1) in vec4 vColor;
+	out vec4 Color;
+	uniform float uTime;
 	void main(){
-		gl_Position = vec4(vPos + Offset,1.0);
+		Color = vColor;
+		vec3 offset = vec3(0,sin(vPos.x + uTime),0)*0.5;
+		gl_Position = vec4(vPos + offset,1.0);
 	}
 )";
 
 const char* fragmentShaderSource = R"(
 	#version 450
 	out vec4 FragColor;
-	uniform vec4 Color;
+	in vec4 Color;
+	uniform float uTime;
 	void main(){
-		FragColor = Color;
+		FragColor = Color * abs(sin(uTime));
 	}
 )";
 
@@ -88,11 +93,15 @@ unsigned int createVAO(float* vertexData, int numVertices) {
 	glGenBuffers(1, &vbo);
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
 	//Allocate space for + send vertex data to GPU.
-	glBufferData(GL_ARRAY_BUFFER, sizeof(float)*numVertices*3, vertexData, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(float)*numVertices*7, vertexData, GL_STATIC_DRAW);
 
 	//Position attribute
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 3, (const void*)0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 7, (const void*)0);
 	glEnableVertexAttribArray(0);
+
+	//Color attribute
+	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(float) * 7, (const void*)(sizeof(float)*3));
+	glEnableVertexAttribArray(1);
 
 	return vao;
 }
@@ -112,8 +121,6 @@ int main() {
 
 	unsigned int shader = createShaderProgram(vertexShaderSource, fragmentShaderSource);
 	unsigned int vaoA = createVAO(vertices,3);
-	int colorUniformLoc = glGetUniformLocation(shader, "Color");
-	int offsetUniformLoc = glGetUniformLocation(shader, "Offset");
 
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
@@ -123,18 +130,13 @@ int main() {
 
 		glBindVertexArray(vaoA);
 		
+		//The current time in seconds this frame
 		float time = (float)glfwGetTime();
-		float offsetY = (float)sin(time) * 0.5;
-		float offsetX = (float)cos(time) * 0.5;
-		float r = (float)fabs(sin(time * 2.0));
-
-		glUniform3f(offsetUniformLoc, offsetX, offsetY, 0.0f);
-		glUniform4f(colorUniformLoc, r, 1.0-r, 0.0f, 0.5f);
+		//Get the location in the uniform table of the variable
+		int timeLocation = glGetUniformLocation(shader, "uTime");
+		//Set the value of the variable at the location
+		glUniform1f(timeLocation, time);
 		glDrawArrays(GL_TRIANGLES, 0, 3);
-
-	/*	glUniform3f(offsetUniformLoc, 0.2f, 0.2f, 0.0f);
-		glUniform4f(colorUniformLoc, 1.0f, 1.0f, 0.0f, 0.5f);
-		glDrawArrays(GL_TRIANGLES, 0, 3);*/
 
 		glfwSwapBuffers(window);
 	}
