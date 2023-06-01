@@ -36,16 +36,17 @@ void ew::Mesh::load(std::vector<Vertex> vertices, std::vector<unsigned int> indi
 	
 	glBindVertexArray(m_vao);
 
+	m_vertices = vertices;
+	m_indices = indices;
+
 	//Supply vbo data
 	glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * vertices.size(), vertices.data(), GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * m_vertices.size(), m_vertices.data(), GL_STATIC_DRAW);
 
 	//Supply ebo data
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ebo);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * indices.size(), indices.data(), GL_STATIC_DRAW);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * m_indices.size(), m_indices.data(), GL_STATIC_DRAW);
 
-	m_vertices = vertices;
-	m_indices = indices;
 }
 
 

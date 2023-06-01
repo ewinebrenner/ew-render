@@ -26,3 +26,4 @@ include(external/glm.cmake)
 
 add_subdirectory(ew)
 add_subdirectory(examples/helloTriangle)
+add_subdirectory(examples/terrainExample)
