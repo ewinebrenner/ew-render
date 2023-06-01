@@ -20,8 +20,8 @@
 #include <ew/Transform.h>
 #include <ew/FlyCamController.h>
 
-const int SCREEN_WIDTH = 1080;
-const int SCREEN_HEIGHT = 720;
+const int SCREEN_WIDTH = 1280;
+const int SCREEN_HEIGHT = 960;
 bool show_demo_window = false;
 float prevTime, currTime;
 void on_mouse_button_pressed(GLFWwindow* window, int button, int action, int mods);
@@ -81,6 +81,9 @@ struct TerrainSettings {
 	float amplitude = 10;
 	float textureTiling = 0.5;
 };
+glm::vec3 fogColor = glm::vec3(0.5, 0.6, 0.7);
+glm::vec3 bgColor = fogColor * 0.9f;
+float fogDensity = 0.01f;
 
 TerrainSettings terrainSettings;
 bool mouseUnlocked = false;
@@ -201,10 +204,11 @@ int main() {
 		}
 
 		//START DRAWING
-		glClearColor(0.1f, 0.2f, 0.3f, 1.0f);
+		glClearColor(bgColor.r, bgColor.g, bgColor.b, 1.0);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		shader.use();
+		material->setFloat("_Time", currTime);
 		material->setMat4("_Model", cubeTransform.localToWorld());
 		material->setMat4("_View", camera.getViewMatrix());
 		material->setMat4("_Projection", camera.getProjectionMatrix());
@@ -217,6 +221,8 @@ int main() {
 		material->setTexture("_Textures[0]", &tex_rock);
 		material->setTexture("_Textures[1]", &tex_grass);
 		material->setTexture("_Textures[2]", &tex_snow);
+		material->setFloat("_FogDensity", fogDensity);
+		material->setVec3("_FogColor", fogColor);
 
 		material->updateUniforms();
 		terrainMesh.draw();
@@ -227,10 +233,13 @@ int main() {
 		ImGui::NewFrame();
 
 		ImGui::Begin("Settings");
-		ImGui::Text("Hello");
+		ImGui::ColorEdit3("BG Color", &bgColor.r);
+		ImGui::ColorEdit3("Fog Color", &fogColor.r);
+		ImGui::DragFloat("Fog Density", &fogDensity, 0.001f, 0.0f, 0.1f);
+
 		ImGui::DragFloat("Frequency", &terrainSettings.frequency, 0.05f, 0.0f, 10.0f);
 		ImGui::DragFloat("Amplitude", &terrainSettings.amplitude, 0.05f, 0.0f, 100.0f);
-		ImGui::DragFloat("TextureTiling", &terrainSettings.textureTiling, 0.01f, 0.0f, 1.0f);
+		ImGui::DragFloat("TextureTiling", &terrainSettings.textureTiling, 0.01f, 0.0f, 10.0f);
 		ImGui::End();
 
 		if (show_demo_window) {
