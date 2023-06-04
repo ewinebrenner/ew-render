@@ -3,10 +3,10 @@
 
 glm::mat4 ew::Transform::localToWorld() const
 {
-	glm::mat4 m = glm::scale(glm::mat4(1), scale);
-	m = glm::toMat4(rotation) * m;
-	m = glm::translate(m, position);
-	return m;
+	glm::mat4 s = glm::scale(glm::mat4(1), scale);
+	glm::mat4 r = glm::toMat4(rotation);
+	glm::mat4 t = glm::translate(glm::mat4(1), position);
+	return t * r * s;
 }
 
 glm::vec3 ew::Transform::getForward() const

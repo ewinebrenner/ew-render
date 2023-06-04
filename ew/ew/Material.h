@@ -19,7 +19,7 @@ namespace ew {
 		void setVec4(keyType name, const glm::vec4& value);
 		void setMat4(keyType name, const glm::mat4& value);
 		void updateUniforms();
-
+		void use();
 	private:
 		Shader* m_shader;
 		std::map<keyType, Texture*> m_textureValues;

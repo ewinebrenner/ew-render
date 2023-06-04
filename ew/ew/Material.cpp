@@ -64,3 +64,8 @@ void ew::Material::updateUniforms()
 		m_shader->setMat4(p.first, p.second);
 	}
 }
+
+void ew::Material::use()
+{
+	m_shader->use();
+}
