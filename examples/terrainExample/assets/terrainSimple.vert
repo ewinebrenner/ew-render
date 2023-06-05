@@ -7,7 +7,10 @@ out Vertex{
     vec2 UV;
 }vs_out;
 
+uniform mat4 _Model;
+uniform mat4 _View;
+uniform mat4 _Projection;
 void main(){      
     vs_out.UV = in_UV;
-    gl_Position = vec4(in_Pos,1);
+    gl_Position = _Projection * _View * _Model * vec4(in_Pos,1);
 }

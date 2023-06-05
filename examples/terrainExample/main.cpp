@@ -81,6 +81,9 @@ struct TerrainSettings {
 	float frequency = 0.5;
 	float amplitude = 8;
 	float textureTiling = 10;
+	int tessLevelOuter = 8;
+	int tessLevelInner = 5;
+	bool wireFrame = true;
 };
 glm::vec3 fogColor = glm::vec3(0.5, 0.6, 0.7);
 glm::vec3 bgColor = fogColor * 0.9f;
@@ -120,6 +123,12 @@ int main() {
 
 	printf("successful!\n");
 
+	int majorVersion, minorVersion;
+
+	glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+	glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+	printf("OpenGL version: %d.%d\n", majorVersion, minorVersion);
+
 	printf("Loading models...");
 
 	ew::Texture tex_perlinNoise("assets/perlinNoise.png");
@@ -133,7 +142,7 @@ int main() {
 	planeModel.loadFromFile("assets/plane.obj");
 
 	MeshData terrainMeshData;
-	createPlane(100.0f, 100.0f, 100, &terrainMeshData);
+	createPlane(100.0f, 100.0f, 10, &terrainMeshData);
 
 	ew::Mesh terrainMesh;
 	terrainMesh.load(terrainMeshData.vertices, terrainMeshData.indices);
@@ -141,6 +150,8 @@ int main() {
 	ew::Shader terrainShader;
 	{
 		terrainShader.attach(ew::ShaderStage(ew::ShaderType::VERTEX, "assets/terrain.vert"));
+		terrainShader.attach(ew::ShaderStage(ew::ShaderType::TESS_CONTROL, "assets/terrain.tesc"));
+		terrainShader.attach(ew::ShaderStage(ew::ShaderType::TESS_EVAL, "assets/terrain.tese"));
 		terrainShader.attach(ew::ShaderStage(ew::ShaderType::GEOMETRY, "assets/terrain.geom"));
 		terrainShader.attach(ew::ShaderStage(ew::ShaderType::FRAGMENT, "assets/terrain.frag"));
 		terrainShader.link();
@@ -217,6 +228,7 @@ int main() {
 		//Draw terrain
 		glCullFace(GL_BACK);
 		glDisable(GL_BLEND);
+		//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
 		terrainMaterial.use();
 		terrainMaterial.setFloat("_Time", currTime);
@@ -238,11 +250,19 @@ int main() {
 		terrainMaterial.setVec3("_Light.direction", skySettings.lightDir);
 		terrainMaterial.setVec3("_Light.diffuseColor", skySettings.lightDiffuse * 0.9f);
 		terrainMaterial.setVec3("_Light.ambientColor", skySettings.lightAmbient * 0.1f);
-		
+		terrainMaterial.setFloat("_TessLevelOuter", (float)terrainSettings.tessLevelOuter);
+		terrainMaterial.setFloat("_TessLevelInner", (float)terrainSettings.tessLevelInner);
+		terrainMaterial.setInt("_WireFrame", terrainSettings.wireFrame);
 		terrainMaterial.updateUniforms();
-		terrainMesh.draw();
+
+		glPatchParameteri(GL_PATCH_VERTICES, 3);
+		terrainMesh.drawPatches();
+
+		//terrainMesh.draw();
+
 
 		//Draw sky sphere
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 		glCullFace(GL_FRONT);
 		glDepthMask(GL_FALSE);
 		glDepthFunc(GL_LEQUAL);
@@ -298,6 +318,11 @@ int main() {
 		ImGui::DragFloat("Frequency", &terrainSettings.frequency, 0.05f, 0.0f, 10.0f);
 		ImGui::DragFloat("Amplitude", &terrainSettings.amplitude, 0.05f, 0.0f, 100.0f);
 		ImGui::DragFloat("TextureTiling", &terrainSettings.textureTiling, 0.01f, 0.0f, 10.0f);
+		ImGui::DragInt("Tesselation Level", &terrainSettings.tessLevelOuter, 1.0f, 1, 32);
+		terrainSettings.tessLevelInner = terrainSettings.tessLevelOuter;
+		//ImGui::DragInt("Tesselation Inner", &terrainSettings.tessLevelInner, 1.0f, 1, 16);
+		ImGui::Checkbox("Wireframe Render", &terrainSettings.wireFrame);
+
 		ImGui::End();
 
 		if (show_demo_window) {

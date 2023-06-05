@@ -54,3 +54,7 @@ void ew::Mesh::draw() {
 	glBindVertexArray(m_vao);
 	glDrawElements(GL_TRIANGLES, m_indices.size(), GL_UNSIGNED_INT, 0);
 }
+void ew::Mesh::drawPatches() {
+	glBindVertexArray(m_vao);
+	glDrawElements(GL_PATCHES, m_indices.size(), GL_UNSIGNED_INT, 0);
+}

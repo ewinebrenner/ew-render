@@ -1,4 +1,4 @@
-#version 330                          
+#version 450 core                          
 out vec4 FragColor;
 
 uniform vec3 _Color;
@@ -6,7 +6,7 @@ uniform vec3 _Color;
 in Vertex{
     vec3 WorldPos;
     vec3 ViewPos;
-    vec3 Normal;
+    vec3 WorldNormal;
     vec2 UV;
     vec3 BaryCoords;
 }fs_in;
@@ -26,6 +26,7 @@ uniform struct Light{
     vec3 diffuseColor;
     vec3 ambientColor;
 }_Light;
+uniform int _WireFrame;
 
 vec3 getTextureColor(vec3 worldPos){
     float height = worldPos.y;
@@ -68,7 +69,7 @@ void main(){
     vec3 toCamera = normalize(_CameraPos - fs_in.WorldPos);
     
     //Lighting
-    vec3 normal = normalize(fs_in.Normal);
+    vec3 normal = normalize(fs_in.WorldNormal);
 
     float diffuseFactor = max(dot(normal,-_Light.direction),0.0);
     vec3 light = _Light.diffuseColor * diffuseFactor + _Light.ambientColor;
@@ -78,6 +79,12 @@ void main(){
     col = applyFog(col,toCamera,_FogDensity);
 
     //Wireframe render
-    col = mix(col*0.1,col,edgeFactor(1.0));
+    if (_WireFrame == 1){
+        col = mix(col*0.1,col,edgeFactor(1.0));
+    }
+    
     FragColor = vec4(col,1);
+
+   // float e = edgeFactor(1.0);
+   // FragColor = vec4(e,e,e,1.0);
 }

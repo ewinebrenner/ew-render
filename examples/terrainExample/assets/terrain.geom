@@ -1,6 +1,6 @@
 //Geometry shader that adds barycentric coordinates to each vertex
 //Based on 3D Graphics Rendering Cookbook Ch2_Sample10_MeshOptimizer https://github.com/PacktPublishing/3D-Graphics-Rendering-Cookbook
-#version 450
+#version 450 core
 
 layout( triangles ) in;
 layout( triangle_strip, max_vertices = 3 ) out;
@@ -8,14 +8,14 @@ layout( triangle_strip, max_vertices = 3 ) out;
 in Vertex{
     vec3 WorldPos;
     vec3 ViewPos;
-    vec3 Normal;
+    vec3 WorldNormal;
     vec2 UV;
-}vs_in[];
+}geom_in[];
 
 out Vertex{
 	vec3 WorldPos;
     vec3 ViewPos;
-    vec3 Normal;
+    vec3 WorldNormal;
     vec2 UV;
 	vec3 BaryCoords;
 }geo_out;
@@ -33,10 +33,10 @@ void main()
 		gl_Position = gl_in[i].gl_Position;
 
 		//Copy vertex data input to output
-		geo_out.WorldPos = vs_in[i].WorldPos;
-		geo_out.ViewPos = vs_in[i].ViewPos;
-		geo_out.Normal = vs_in[i].Normal;
-		geo_out.UV = vs_in[i].UV;
+		geo_out.WorldPos = geom_in[i].WorldPos;
+		geo_out.ViewPos = geom_in[i].ViewPos;
+		geo_out.WorldNormal = geom_in[i].WorldNormal;
+		geo_out.UV = geom_in[i].UV;
 		geo_out.BaryCoords = bc[i];
 		
 		EmitVertex();

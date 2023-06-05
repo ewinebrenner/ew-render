@@ -8,6 +8,7 @@ namespace ew {
 		Mesh();
 		void load(std::vector<Vertex> vertices, std::vector<unsigned int> indices);
 		void draw();
+		void drawPatches();
 	private:
 		bool m_initialized = false;
 		unsigned int m_vao = 0, m_vbo = 0, m_ebo = 0;

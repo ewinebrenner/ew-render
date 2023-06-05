@@ -13,6 +13,7 @@ namespace ew {
 	public:
 		Material(Shader* shader);
 		void setTexture(keyType name, Texture* value);
+		void setInt(keyType name, int value);
 		void setFloat(keyType name, float value);
 		void setVec2(keyType name, const glm::vec2& value);
 		void setVec3(keyType name, const glm::vec3& value);
@@ -23,6 +24,7 @@ namespace ew {
 	private:
 		Shader* m_shader;
 		std::map<keyType, Texture*> m_textureValues;
+		std::map<keyType, int> m_intValues;
 		std::map<keyType, float> m_floatValues;
 		std::map<keyType, glm::vec2> m_vec2Values;
 		std::map<keyType, glm::vec3> m_vec3Values;

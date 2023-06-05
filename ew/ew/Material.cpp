@@ -12,7 +12,10 @@ void ew::Material::setTexture(keyType name, Texture* value)
 {
 	m_textureValues[name] = value;
 }
-
+void ew::Material::setInt(keyType name, int value)
+{
+	m_intValues[name] = value;
+}
 void ew::Material::setFloat(keyType name, float value)
 {
 	m_floatValues[name] = value;
@@ -47,6 +50,9 @@ void ew::Material::updateUniforms()
 		glBindTexture(GL_TEXTURE_2D, p.second->getHandle());
 		m_shader->setInt(p.first, texSlot);
 		texSlot++;
+	}
+	for (auto const& p : m_intValues) {
+		m_shader->setInt(p.first, p.second);
 	}
 	for (auto const& p : m_floatValues) {
 		m_shader->setFloat(p.first, p.second);
