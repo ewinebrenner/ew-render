@@ -8,6 +8,7 @@ in Vertex{
     vec3 ViewPos;
     vec3 Normal;
     vec2 UV;
+    vec3 BaryCoords;
 }fs_in;
 
 const int NUM_TEXTURE_TILES = 3;
@@ -53,6 +54,15 @@ vec3 applyFog(vec3 col, vec3 toCamera, float fogDensity){
     return col;
 }
 
+//Returns 0 or 1 based on closeness to edge, where 1 = edge, 0 = not edge
+//Thickness is in screen-space pixels
+float edgeFactor(float thickness)
+{
+    //fwidth returns sum of absolute value of derivatives in x and y
+	vec3 a3 = smoothstep( vec3( 0.0 ), fwidth(fs_in.BaryCoords) * thickness, fs_in.BaryCoords);
+	return min( min( a3.x, a3.y ), a3.z );
+}
+
 void main(){         
     vec3 albedo = getTextureColor(fs_in.WorldPos);
     vec3 toCamera = normalize(_CameraPos - fs_in.WorldPos);
@@ -66,10 +76,8 @@ void main(){
     vec3 col = albedo * light;
 
     col = applyFog(col,toCamera,_FogDensity);
-  
-    FragColor = vec4(col,1);
 
-    //FragColor = vec4(normal,1.0);
-   // FragColor = vec4(rimFactor);
-   // FragColor = vec4(sunAmnt);
+    //Wireframe render
+    col = mix(col*0.1,col,edgeFactor(1.0));
+    FragColor = vec4(col,1);
 }

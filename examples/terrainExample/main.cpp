@@ -39,7 +39,7 @@ struct MeshData {
 	std::vector<unsigned int> indices;
 };
 
-void createPlane(float width, float height, int subdivisions, MeshData* mesh) {
+void createPlane(float width, float height, unsigned int subdivisions, MeshData* mesh) {
 	mesh->vertices.clear();
 	mesh->indices.clear();
 	//mesh->vertices.resize((subdivisions + 1) * (subdivisions + 1));
@@ -138,16 +138,35 @@ int main() {
 	ew::Mesh terrainMesh;
 	terrainMesh.load(terrainMeshData.vertices, terrainMeshData.indices);
 
-	ew::Shader terrainShader("assets/terrain.vert", "assets/terrain.frag");
+	ew::Shader terrainShader;
+	{
+		terrainShader.attach(ew::ShaderStage(ew::ShaderType::VERTEX, "assets/terrain.vert"));
+		terrainShader.attach(ew::ShaderStage(ew::ShaderType::GEOMETRY, "assets/terrain.geom"));
+		terrainShader.attach(ew::ShaderStage(ew::ShaderType::FRAGMENT, "assets/terrain.frag"));
+		terrainShader.link();
+	}
+
 	ew::Material terrainMaterial(&terrainShader);
 	terrainMaterial.setTexture("_HeightMap", &tex_perlinNoise);
 	terrainMaterial.setTexture("_Albedo", &tex_rock);
 	
-	ew::Shader skyboxShader("assets/skybox.vert", "assets/skybox.frag");
+	ew::Shader skyboxShader; 
+	{
+		skyboxShader.attach(ew::ShaderStage(ew::ShaderType::VERTEX, "assets/skybox.vert"));
+		skyboxShader.attach(ew::ShaderStage(ew::ShaderType::FRAGMENT, "assets/skybox.frag"));
+		skyboxShader.link();
+	}
+
 	ew::Material skyboxMaterial(&skyboxShader);
 	skyboxMaterial.setTexture("_NoiseTex", &tex_perlinNoise);
 
-	ew::Shader cloudShader("assets/clouds.vert", "assets/clouds.frag");
+	ew::Shader cloudShader; 
+	{
+		cloudShader.attach(ew::ShaderStage(ew::ShaderType::VERTEX, "assets/clouds.vert"));
+		cloudShader.attach(ew::ShaderStage(ew::ShaderType::FRAGMENT, "assets/clouds.frag"));
+		cloudShader.link();
+	}
+
 	ew::Material cloudMaterial(&cloudShader);
 	cloudMaterial.setTexture("_NoiseTex", &tex_perlinNoise);
 
@@ -164,7 +183,7 @@ int main() {
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
-	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	
 
 	//Camera settings
 	
@@ -198,6 +217,7 @@ int main() {
 		//Draw terrain
 		glCullFace(GL_BACK);
 		glDisable(GL_BLEND);
+
 		terrainMaterial.use();
 		terrainMaterial.setFloat("_Time", currTime);
 		terrainMaterial.setMat4("_Model", cubeTransform.localToWorld());

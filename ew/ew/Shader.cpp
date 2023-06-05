@@ -7,24 +7,85 @@
 #include <glm/mat4x4.hpp> // glm::mat4
 #include <glm/gtc/type_ptr.hpp>
 
-ew::Shader::Shader(std::string vertexShaderPath, std::string fragmentShaderPath)
+ew::ShaderStage::ShaderStage(ew::ShaderType type) {
+	m_type = type;
+	m_handle = glCreateShader(convertToGLType(type));
+}
+ew::ShaderStage::ShaderStage(ew::ShaderType type, const std::string& filePath)
+	:ShaderStage(type){
+	loadSourceFromFile(filePath);
+}
+
+ew::ShaderStage::~ShaderStage() {
+	glDeleteShader(m_handle);
+}
+
+bool ew::ShaderStage::loadSourceFromFile(const std::string& filePath) {
+	std::ifstream fileStream;
+	fileStream.open(filePath);
+	if (!fileStream.is_open()) {
+		printf("Failed to open file %s ", filePath.c_str());
+		return false;
+	}
+	std::stringstream stringStream;
+	stringStream << fileStream.rdbuf();
+	fileStream.close();
+	return loadSource(stringStream.str());
+}
+
+bool ew::ShaderStage::loadSource(const std::string& shaderSource) {
+	const char* src = shaderSource.c_str();
+	glShaderSource(m_handle, 1, &src, NULL);
+	return tryCompile();
+}
+
+bool ew::ShaderStage::tryCompile() {
+	//Compiles the shader source
+	glCompileShader(m_handle);
+
+	//Get result of last compile - either GL_TRUE or GL_FALSE
+	GLint success;
+	glGetShaderiv(m_handle, GL_COMPILE_STATUS, &success);
+	if (!success) {
+		//Dump logs into a char array - 512 is an arbitrary length
+		GLchar infoLog[512];
+		glGetShaderInfoLog(m_handle, 512, NULL, infoLog);
+		printf("Failed to compile %s shader: %s", getName(m_type).c_str(), infoLog);
+	}
+	return success;
+}
+
+unsigned int ew::ShaderStage::convertToGLType(ew::ShaderType shaderType) {
+	static unsigned int glTypes[6] = {
+		GL_VERTEX_SHADER, GL_TESS_CONTROL_SHADER, GL_TESS_EVALUATION_SHADER,
+		GL_GEOMETRY_SHADER, GL_FRAGMENT_SHADER, GL_COMPUTE_SHADER
+	};
+	return glTypes[(int)shaderType];
+}
+
+std::string ew::ShaderStage::getName(ew::ShaderType shaderType) {
+	static std::string shaderTypeNames[6] = {
+		"Vertex", "Tesselation Control", "Tesselation Evaluation",
+		"Geometry", "Fragment", "Compute"
+	};
+	return shaderTypeNames[(int)shaderType];
+}
+
+ew::Shader::Shader()
 {
-	std::string vertexShaderString = readFile(vertexShaderPath);
-	GLuint vertexShader = compileShader(vertexShaderString.c_str(), GL_VERTEX_SHADER);
-
-	std::string fragmentShaderString = readFile(fragmentShaderPath);
-	GLuint fragmentShader = compileShader(fragmentShaderString.c_str(), GL_FRAGMENT_SHADER);
-
-	//Create an empty shader program
 	m_id = glCreateProgram();
+}
 
-	//Attach our shader objects
-	glAttachShader(m_id, vertexShader);
-	glAttachShader(m_id, fragmentShader);
+ew::Shader::~Shader() {
+	glDeleteProgram(m_id);
+}
 
-	//Link program - will create an executable program with the attached shaders
+void ew::Shader::attach(const ew::ShaderStage& stage) {
+	glAttachShader(m_id, stage.m_handle);
+}
+
+bool ew::Shader::link() {
 	glLinkProgram(m_id);
-
 	//Logging
 	int success;
 	glGetProgramiv(m_id, GL_LINK_STATUS, &success);
@@ -34,9 +95,7 @@ ew::Shader::Shader(std::string vertexShaderPath, std::string fragmentShaderPath)
 		glGetProgramInfoLog(m_id, 512, NULL, infoLog);
 		printf("Failed to link shader program: %s", infoLog);
 	}
-
-	glDeleteShader(vertexShader);
-	glDeleteShader(fragmentShader);
+	return success;
 }
 
 void ew::Shader::use()
@@ -73,38 +132,4 @@ void ew::Shader::setMat3(std::string name, const glm::mat3& value) {
 
 void ew::Shader::setMat4(std::string name, const glm::mat4& value) {
 	glProgramUniformMatrix4fv(m_id, glGetUniformLocation(m_id, name.c_str()), 1, false, glm::value_ptr(value));
-}
-
-std::string ew::Shader::readFile(const std::string& filePath)
-{
-	std::ifstream fileStream;
-	fileStream.open(filePath);
-	if (!fileStream.is_open()) {
-		printf("Failed to open file %s ", filePath.c_str());
-	}
-	std::stringstream stringStream;
-	stringStream << fileStream.rdbuf();
-	fileStream.close();
-	return stringStream.str();
-}
-
-GLuint ew::Shader::compileShader(const char* shaderSource, GLenum shaderType)
-{
-	GLuint shader = glCreateShader(shaderType);
-	//Provides the source code to the object.
-	glShaderSource(shader, 1, &shaderSource, NULL);
-	//Compiles the shader source
-	glCompileShader(shader);
-
-	//Get result of last compile - either GL_TRUE or GL_FALSE
-	GLint success;
-	glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
-	if (!success) {
-		const char* shaderName = shaderType == GL_VERTEX_SHADER ? "VERTEX" : "FRAGMENT";
-		//Dump logs into a char array - 512 is an arbitrary length
-		GLchar infoLog[512];
-		glGetShaderInfoLog(shader, 512, NULL, infoLog);
-		printf("Failed to compile %s shader: %s", shaderName, infoLog);
-	}
-	return shader;
 }

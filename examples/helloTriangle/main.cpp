@@ -64,7 +64,14 @@ int main() {
 		printf("successful!\n");
 	}
 
-	ew::Shader shader("assets/unlit.vert", "assets/unlit.frag");
+	ew::Shader shader;
+	ew::ShaderStage vertexShader(ew::ShaderType::VERTEX);
+	vertexShader.loadSourceFromFile("assets/unlit.vert");
+	ew::ShaderStage fragmentShader(ew::ShaderType::FRAGMENT);
+	fragmentShader.loadSourceFromFile("assets/unlit.frag");
+	shader.attach(vertexShader);
+	shader.attach(fragmentShader);
+	shader.link();
 
 	ew::Material stoneMaterial(&shader);
 	stoneMaterial.setTexture("_Texture", &tex_paving_stones_color);
