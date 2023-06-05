@@ -84,6 +84,7 @@ struct TerrainSettings {
 	int tessLevelOuter = 8;
 	int tessLevelInner = 5;
 	bool wireFrame = true;
+	float wireFrameThickness = 1.0;
 };
 glm::vec3 fogColor = glm::vec3(0.5, 0.6, 0.7);
 glm::vec3 bgColor = fogColor * 0.9f;
@@ -253,6 +254,7 @@ int main() {
 		terrainMaterial.setFloat("_TessLevelOuter", (float)terrainSettings.tessLevelOuter);
 		terrainMaterial.setFloat("_TessLevelInner", (float)terrainSettings.tessLevelInner);
 		terrainMaterial.setInt("_WireFrame", terrainSettings.wireFrame);
+		terrainMaterial.setFloat("_WireFrameThickness", terrainSettings.wireFrameThickness);
 		terrainMaterial.updateUniforms();
 
 		glPatchParameteri(GL_PATCH_VERTICES, 3);
@@ -322,7 +324,7 @@ int main() {
 		terrainSettings.tessLevelInner = terrainSettings.tessLevelOuter;
 		//ImGui::DragInt("Tesselation Inner", &terrainSettings.tessLevelInner, 1.0f, 1, 16);
 		ImGui::Checkbox("Wireframe Render", &terrainSettings.wireFrame);
-
+		ImGui::SliderFloat("Wireframe Thickness", &terrainSettings.wireFrameThickness, 0.0f, 5.0f);
 		ImGui::End();
 
 		if (show_demo_window) {

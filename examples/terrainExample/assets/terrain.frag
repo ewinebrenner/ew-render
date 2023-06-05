@@ -27,6 +27,7 @@ uniform struct Light{
     vec3 ambientColor;
 }_Light;
 uniform int _WireFrame;
+uniform float _WireFrameThickness = 1.0;
 
 vec3 getTextureColor(vec3 worldPos){
     float height = worldPos.y;
@@ -80,7 +81,7 @@ void main(){
 
     //Wireframe render
     if (_WireFrame == 1){
-        col = mix(col*0.1,col,edgeFactor(1.0));
+        col = mix(col*0.1,col,edgeFactor(_WireFrameThickness));
     }
     
     FragColor = vec4(col,1);
