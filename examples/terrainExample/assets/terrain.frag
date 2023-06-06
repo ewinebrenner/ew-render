@@ -1,6 +1,6 @@
 #version 450 core    
 
-#define DEBUG_HEIGHT
+//#define DEBUG_HEIGHT
 
 out vec4 FragColor;
 

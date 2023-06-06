@@ -56,5 +56,6 @@ void ew::Mesh::draw() {
 }
 void ew::Mesh::drawPatches() {
 	glBindVertexArray(m_vao);
-	glDrawElements(GL_PATCHES, m_indices.size(), GL_UNSIGNED_INT, 0);
+	//glDrawElements(GL_PATCHES, m_indices.size(), GL_UNSIGNED_INT, 0);
+	glDrawArrays(GL_PATCHES, 0, m_vertices.size());
 }

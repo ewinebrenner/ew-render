@@ -39,43 +39,8 @@ struct MeshData {
 	std::vector<unsigned int> indices;
 };
 
-void createPlane(float width, float height, unsigned int subdivisions, MeshData* mesh) {
-	mesh->vertices.clear();
-	mesh->indices.clear();
-	//mesh->vertices.resize((subdivisions + 1) * (subdivisions + 1));
-
-	//Vertices
-	for (size_t i = 0; i <= subdivisions; i++)
-	{
-		for (size_t j = 0; j <= subdivisions; j++)
-		{
-			float u = ((float)i / subdivisions);
-			float v = ((float)j / subdivisions);
-			float x = width * u;
-			float z = height * v;
-			ew::Vertex vert = ew::Vertex();
-			vert.position = glm::vec3(x, 0, z);
-			vert.uv = glm::vec2(u, v);
-			vert.normal = glm::vec3(0, 1, 0);
-			vert.tangent = glm::vec3(1, 0, 0);
-			mesh->vertices.push_back(vert);
-		}
-	}
-	//Indices
-	for (unsigned int i = 0; i < subdivisions; i++)
-	{
-		for (unsigned int j = 0; j < subdivisions; j++)
-		{
-			unsigned int startIndex = i + j * (subdivisions + 1);
-			mesh->indices.push_back(startIndex);
-			mesh->indices.push_back(startIndex + 1);
-			mesh->indices.push_back(startIndex + subdivisions + 2);
-			mesh->indices.push_back(startIndex + subdivisions + 2);
-			mesh->indices.push_back(startIndex + subdivisions + 1);
-			mesh->indices.push_back(startIndex);
-		}
-	}
-}
+void createPatches(float width, float height, unsigned int numPatches, MeshData* mesh);
+void createPlane(float width, float height, unsigned int subdivisions, MeshData* mesh);
 
 struct TerrainSettings {
 	float frequency = 1.0;
@@ -92,7 +57,6 @@ float fogDensity = 0.01f;
 
 TerrainSettings terrainSettings;
 bool mouseUnlocked = false;
-float camMoveSpeed = 30.0f;
 
 struct SkySettings {
 	glm::vec3 topColor = glm::vec3(0.3, 0.5, 0.9);
@@ -103,6 +67,13 @@ struct SkySettings {
 	glm::vec3 lightAmbient = glm::vec3(0.9, 0.8, 1.0);
 	float sunSize = 512; //exp
 }skySettings;
+
+
+float terrainWidth = 1024;
+float terrainHeight = 1024;
+int terrainSubdivisions = 8; //Initial quad patches
+glm::vec3 cameraStartPos = glm::vec3(terrainWidth / 2, 50, terrainHeight / 2);
+float camMoveSpeed = 100.0f;
 
 int main() {
 	printf("Initializing...");
@@ -144,8 +115,8 @@ int main() {
 	planeModel.loadFromFile("assets/plane.obj");
 
 	MeshData terrainMeshData;
-	createPlane(2624.0f/2.0f, 1756.0f/2.0f, 100, &terrainMeshData);
-
+	//createPlane(terrainWidth, terrainHeight, terrainSubdivisions, &terrainMeshData);
+	createPatches(terrainWidth, terrainHeight, terrainSubdivisions, &terrainMeshData);
 	ew::Mesh terrainMesh;
 	terrainMesh.load(terrainMeshData.vertices, terrainMeshData.indices);
 
@@ -199,10 +170,9 @@ int main() {
 	
 
 	//Camera settings
-	
-	camera.getTransform()->translate(glm::vec3(0, 5, -10));
+	camera.getTransform()->translate(cameraStartPos);
 	camera.setFov(60.0f);
-	camera.setFarPlane(1000.0f);
+	camera.setFarPlane(10000.0f);
 	camera.setAspectRatio((float)SCREEN_WIDTH / SCREEN_HEIGHT);
 
 	while (!glfwWindowShouldClose(window)) {
@@ -258,7 +228,7 @@ int main() {
 		terrainMaterial.setFloat("_WireFrameThickness", terrainSettings.wireFrameThickness);
 		terrainMaterial.updateUniforms();
 
-		glPatchParameteri(GL_PATCH_VERTICES, 3);
+		glPatchParameteri(GL_PATCH_VERTICES, 4);
 		terrainMesh.drawPatches();
 
 		//terrainMesh.draw();
@@ -321,7 +291,7 @@ int main() {
 		ImGui::DragFloat("Frequency", &terrainSettings.frequency, 0.05f, 0.0f, 10.0f);
 		ImGui::DragFloat("Amplitude", &terrainSettings.amplitude, 0.05f, 0.0f, 100.0f);
 		ImGui::DragFloat("TextureTiling", &terrainSettings.textureTiling, 0.01f, 0.0f, 10.0f);
-		ImGui::DragInt("Tesselation Level", &terrainSettings.tessLevelOuter, 1.0f, 1, 32);
+		ImGui::DragInt("Tesselation Level", &terrainSettings.tessLevelOuter, 1.0f, 1, 64);
 		terrainSettings.tessLevelInner = terrainSettings.tessLevelOuter;
 		//ImGui::DragInt("Tesselation Inner", &terrainSettings.tessLevelInner, 1.0f, 1, 16);
 		ImGui::Checkbox("Wireframe Render", &terrainSettings.wireFrame);
@@ -338,6 +308,95 @@ int main() {
 		glfwSwapBuffers(window);
 	}
 	printf("Shutting down...");
+}
+
+
+void createPatches(float width, float height, unsigned int numPatches, MeshData* mesh) {
+	for (unsigned i = 0; i <= numPatches - 1; i++)
+	{
+		for (unsigned j = 0; j <= numPatches - 1; j++)
+		{
+			//Triangle strip ordering
+			//Bottom left
+			float u = ((float)i / numPatches);
+			float v = ((float)j / numPatches);
+			float x = width * u;
+			float z = height * v;
+			ew::Vertex vert = ew::Vertex();
+			vert.position = glm::vec3(x, 0, z);
+			vert.uv = glm::vec2(u, v);
+			mesh->vertices.push_back(vert);
+
+			//Top left
+			u = ((float)(i) / numPatches);
+			v = ((float)(j + 1) / numPatches);
+			x = width * u;
+			z = height * v;
+			vert = ew::Vertex();
+			vert.position = glm::vec3(x, 0, z);
+			vert.uv = glm::vec2(u, v);
+			mesh->vertices.push_back(vert);
+
+			//Bottom right
+			u = ((float)(i + 1) / numPatches);
+			v = ((float)j / numPatches);
+			x = width * u;
+			z = height * v;
+			vert = ew::Vertex();
+			vert.position = glm::vec3(x, 0, z);
+			vert.uv = glm::vec2(u, v);
+			mesh->vertices.push_back(vert);
+
+			//Top right
+			u = ((float)(i + 1) / numPatches);
+			v = ((float)(j + 1) / numPatches);
+			x = width * u;
+			z = height * v;
+			vert = ew::Vertex();
+			vert.position = glm::vec3(x, 0, z);
+			vert.uv = glm::vec2(u, v);
+			mesh->vertices.push_back(vert);
+		}
+	}
+}
+
+void createPlane(float width, float height, unsigned int subdivisions, MeshData* mesh) {
+	mesh->vertices.clear();
+	mesh->indices.clear();
+	//mesh->vertices.resize((subdivisions + 1) * (subdivisions + 1));
+
+	//Vertices
+	for (size_t i = 0; i <= subdivisions; i++)
+	{
+		for (size_t j = 0; j <= subdivisions; j++)
+		{
+			float u = ((float)i / subdivisions);
+			float v = ((float)j / subdivisions);
+			float x = width * u;
+			float z = height * v;
+			ew::Vertex vert = ew::Vertex();
+			vert.position = glm::vec3(x, 0, z);
+			vert.uv = glm::vec2(u, v);
+			vert.normal = glm::vec3(0, 1, 0);
+			vert.tangent = glm::vec3(1, 0, 0);
+			mesh->vertices.push_back(vert);
+		}
+	}
+
+	//Indices
+	for (unsigned int i = 0; i < subdivisions; i++)
+	{
+		for (unsigned int j = 0; j < subdivisions; j++)
+		{
+			unsigned int startIndex = i + j * (subdivisions + 1);
+			mesh->indices.push_back(startIndex);
+			mesh->indices.push_back(startIndex + 1);
+			mesh->indices.push_back(startIndex + subdivisions + 2);
+			mesh->indices.push_back(startIndex + subdivisions + 2);
+			mesh->indices.push_back(startIndex + subdivisions + 1);
+			mesh->indices.push_back(startIndex);
+		}
+	}
 }
 
 void on_mouse_button_pressed(GLFWwindow* window, int button, int action, int mods)
@@ -383,6 +442,9 @@ void updateCamera(GLFWwindow* window, ew::FlyCamController* cameraController, fl
 
 	//Camera movement
 	float moveDelta = camMoveSpeed * deltaTime;
+	if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT)) {
+		moveDelta *= 2.0;
+	}
 	if (glfwGetKey(window, GLFW_KEY_D)) {
 		cameraController->moveRight(-moveDelta);
 	}
