@@ -3,7 +3,7 @@
 #version 450 core
 
 //layout(triangles, fractional_odd_spacing, ccw) in;
-layout(quads, equal_spacing, ccw) in;
+layout(quads, fractional_even_spacing, ccw) in;
 
 //Data of 4 vertices of this quad
 in Vertex{

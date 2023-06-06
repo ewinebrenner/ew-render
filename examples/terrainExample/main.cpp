@@ -69,9 +69,9 @@ struct SkySettings {
 }skySettings;
 
 
-float terrainWidth = 1024;
-float terrainHeight = 1024;
-int terrainSubdivisions = 8; //Initial quad patches
+float terrainWidth = 2624;
+float terrainHeight = 1756;
+int terrainSubdivisions = 64; //Initial quad patches
 glm::vec3 cameraStartPos = glm::vec3(terrainWidth / 2, 50, terrainHeight / 2);
 float camMoveSpeed = 100.0f;
 
@@ -226,6 +226,7 @@ int main() {
 		terrainMaterial.setFloat("_TessLevelInner", (float)terrainSettings.tessLevelInner);
 		terrainMaterial.setInt("_WireFrame", terrainSettings.wireFrame);
 		terrainMaterial.setFloat("_WireFrameThickness", terrainSettings.wireFrameThickness);
+		terrainMaterial.setVec2("_ViewportSize", glm::vec2((float)SCREEN_WIDTH, (float)SCREEN_HEIGHT));
 		terrainMaterial.updateUniforms();
 
 		glPatchParameteri(GL_PATCH_VERTICES, 4);
@@ -291,7 +292,7 @@ int main() {
 		ImGui::DragFloat("Frequency", &terrainSettings.frequency, 0.05f, 0.0f, 10.0f);
 		ImGui::DragFloat("Amplitude", &terrainSettings.amplitude, 0.05f, 0.0f, 100.0f);
 		ImGui::DragFloat("TextureTiling", &terrainSettings.textureTiling, 0.01f, 0.0f, 10.0f);
-		ImGui::DragInt("Tesselation Level", &terrainSettings.tessLevelOuter, 1.0f, 1, 64);
+		ImGui::DragInt("Triangle Pixel Size", &terrainSettings.tessLevelOuter, 1.0f, 1, 128);
 		terrainSettings.tessLevelInner = terrainSettings.tessLevelOuter;
 		//ImGui::DragInt("Tesselation Inner", &terrainSettings.tessLevelInner, 1.0f, 1, 16);
 		ImGui::Checkbox("Wireframe Render", &terrainSettings.wireFrame);
@@ -444,6 +445,9 @@ void updateCamera(GLFWwindow* window, ew::FlyCamController* cameraController, fl
 	float moveDelta = camMoveSpeed * deltaTime;
 	if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT)) {
 		moveDelta *= 2.0;
+	}
+	else if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL)) {
+		moveDelta *= 0.5f;
 	}
 	if (glfwGetKey(window, GLFW_KEY_D)) {
 		cameraController->moveRight(-moveDelta);
