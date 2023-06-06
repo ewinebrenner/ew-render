@@ -1,6 +1,6 @@
 #version 450 core
 
-layout(triangles, equal_spacing, ccw) in;
+layout(triangles, fractional_even_spacing, ccw) in;
 //layout(quads, fractional_odd_spacing, ccw) in;
 
 //Data of 3 vertices of this triangle
@@ -24,11 +24,8 @@ uniform sampler2D _HeightMap;
 uniform float _Frequency;
 uniform float _Amplitude;
 
-float evaluateHeight(vec2 uv){
-    float h = texture(_HeightMap,uv * _Frequency).r * _Amplitude;
-    h -= texture(_HeightMap,uv * _Frequency * 2.0).r * _Amplitude * 0.5;
-    h -= texture(_HeightMap,uv * _Frequency * 8.0).r * _Amplitude * 0.1;
-    return h;
+float evaluateHeight(vec2 uv){ 
+    return texture(_HeightMap,uv * _Frequency).r * _Amplitude;
 }
 
 vec4 interpVec4(vec4 v0, vec4 v1, vec4 v2){

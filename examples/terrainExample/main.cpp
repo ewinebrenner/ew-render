@@ -78,8 +78,8 @@ void createPlane(float width, float height, unsigned int subdivisions, MeshData*
 }
 
 struct TerrainSettings {
-	float frequency = 0.5;
-	float amplitude = 8;
+	float frequency = 1.0;
+	float amplitude = 20.0;
 	float textureTiling = 10;
 	int tessLevelOuter = 8;
 	int tessLevelInner = 5;
@@ -92,7 +92,7 @@ float fogDensity = 0.01f;
 
 TerrainSettings terrainSettings;
 bool mouseUnlocked = false;
-float camMoveSpeed = 20.0f;
+float camMoveSpeed = 30.0f;
 
 struct SkySettings {
 	glm::vec3 topColor = glm::vec3(0.3, 0.5, 0.9);
@@ -133,6 +133,7 @@ int main() {
 	printf("Loading models...");
 
 	ew::Texture tex_perlinNoise("assets/perlinNoise.png");
+	ew::Texture tex_heightMap("assets/iceland_heightmap.png");
 	ew::Texture tex_rock("assets/rock_albedo.jpg");
 	ew::Texture tex_grass("assets/grass_albedo.jpg");
 	ew::Texture tex_snow("assets/snow_albedo.jpg");
@@ -143,7 +144,7 @@ int main() {
 	planeModel.loadFromFile("assets/plane.obj");
 
 	MeshData terrainMeshData;
-	createPlane(100.0f, 100.0f, 10, &terrainMeshData);
+	createPlane(2624.0f/2.0f, 1756.0f/2.0f, 100, &terrainMeshData);
 
 	ew::Mesh terrainMesh;
 	terrainMesh.load(terrainMeshData.vertices, terrainMeshData.indices);
@@ -159,7 +160,7 @@ int main() {
 	}
 
 	ew::Material terrainMaterial(&terrainShader);
-	terrainMaterial.setTexture("_HeightMap", &tex_perlinNoise);
+	terrainMaterial.setTexture("_HeightMap", &tex_heightMap);
 	terrainMaterial.setTexture("_Albedo", &tex_rock);
 	
 	ew::Shader skyboxShader; 

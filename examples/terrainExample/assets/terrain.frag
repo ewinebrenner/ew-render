@@ -1,4 +1,7 @@
-#version 450 core                          
+#version 450 core    
+
+#define DEBUG_HEIGHT
+
 out vec4 FragColor;
 
 uniform vec3 _Color;
@@ -14,8 +17,10 @@ in Vertex{
 const int NUM_TEXTURE_TILES = 3;
 uniform float _TextureHeights[NUM_TEXTURE_TILES];
 uniform sampler2D _Textures[NUM_TEXTURE_TILES];
+uniform sampler2D _HeightMap;
 
 uniform float _Amplitude;
+uniform float _Frequency;
 uniform float _TextureTiling = 1.0;
 uniform vec3 _CameraPos;
 uniform float _FogDensity = 0.01;
@@ -65,7 +70,11 @@ float edgeFactor(float thickness)
 	return min( min( a3.x, a3.y ), a3.z );
 }
 
-void main(){         
+void main(){   
+    vec3 col;
+#ifdef DEBUG_HEIGHT
+    col = texture(_HeightMap,fs_in.UV * _Frequency).rrr;
+#else
     vec3 albedo = getTextureColor(fs_in.WorldPos);
     vec3 toCamera = normalize(_CameraPos - fs_in.WorldPos);
     
@@ -75,17 +84,17 @@ void main(){
     float diffuseFactor = max(dot(normal,-_Light.direction),0.0);
     vec3 light = _Light.diffuseColor * diffuseFactor + _Light.ambientColor;
 
-    vec3 col = albedo * light;
+    col = albedo * light;
 
     col = applyFog(col,toCamera,_FogDensity);
-
+#endif
     //Wireframe render
     if (_WireFrame == 1){
-        col = mix(col*0.1,col,edgeFactor(_WireFrameThickness));
+        col = mix(vec3(0),col,edgeFactor(_WireFrameThickness));
     }
-    
-    FragColor = vec4(col,1);
 
+    FragColor = vec4(col,1);
+    
    // float e = edgeFactor(1.0);
    // FragColor = vec4(e,e,e,1.0);
 }

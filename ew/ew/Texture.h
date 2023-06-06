@@ -3,7 +3,7 @@
 namespace ew {
 	class Texture {
 	public:
-		Texture(const char* filePath);
+		Texture(const char* filePath, bool mipmap = true);
 	private:
 		unsigned int m_id = 0;
 		unsigned int getOGLTextureFormat(int numChannels);
