@@ -23,10 +23,11 @@ ew::TextRenderer::TextRenderer(ew::Font* font)
 	glBindVertexArray(0);
 }
 
-void ew::TextRenderer::draw(ew::Shader* shader, glm::vec4 color)
+void ew::TextRenderer::draw(const std::string& text, ew::Shader* shader, glm::vec4 color)
 {
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glDepthMask(GL_FALSE);
 
 	shader->use();
 
@@ -39,30 +40,46 @@ void ew::TextRenderer::draw(ew::Shader* shader, glm::vec4 color)
 	glm::mat4 proj = glm::ortho(0.0f, 1080.0f, 0.0f, 720.0f);
 
 	shader->setMat4("_Projection", proj);
-	
-	glBindVertexArray(m_vao);
-	ew::Font::Character c = m_font->m_characters[0];
 
+	unsigned int numChars = text.size();
 
 	std::vector<glm::vec4> vertexData;
-	vertexData.reserve(6);
+	vertexData.reserve(numChars * 6);
 
-	float scale = 4;
+	float scale = 1.0;
 
-	float xpos = 64.f;
-	float ypos = 64.f;
-	float w = c.size.x * scale;
-	float h = c.size.y * scale;
-	
-	vertexData.push_back(glm::vec4(xpos, ypos, 0.0f, 1.0f));
-	vertexData.push_back(glm::vec4(xpos + w, ypos, 1.0f, 1.0f));
-	vertexData.push_back(glm::vec4(xpos + w, ypos + h, 1.0f, 0.0f));
-	vertexData.push_back(glm::vec4(xpos + w, ypos + h, 1.0f, 0.0f));
-	vertexData.push_back(glm::vec4(xpos, ypos+h, 0.0f, 0.0f));
-	vertexData.push_back(glm::vec4(xpos, ypos, 0.0f, 1.0f));
+	float startX = 64.0f;
+	float startY = 64.0f;
 
+	std::string::const_iterator c;
+	for (c = text.begin(); c!=text.end();c++)
+	{
+		ew::Font::Character ch = m_font->m_characters[*c - 32];
+
+		float xpos = startX + ch.bearing.x * scale;
+		float ypos = startY - (ch.size.y - ch.bearing.y) * scale;
+
+		float w = ch.size.x * scale;
+		float h = ch.size.y * scale;
+
+		vertexData.push_back(glm::vec4(xpos, ypos, ch.uvMin.x, ch.uvMin.y)); //Bottom Left
+		vertexData.push_back(glm::vec4(xpos + w, ypos, ch.uvMax.x, ch.uvMin.y)); //Bottom right
+		vertexData.push_back(glm::vec4(xpos + w, ypos + h, ch.uvMax.x, ch.uvMax.y)); //Top right
+
+		vertexData.push_back(glm::vec4(xpos + w, ypos + h, ch.uvMax.x, ch.uvMax.y)); //Top right
+		vertexData.push_back(glm::vec4(xpos, ypos + h, ch.uvMin.x, ch.uvMax.y)); //Top left
+		vertexData.push_back(glm::vec4(xpos, ypos, ch.uvMin.x, ch.uvMin.y)); //Bottom Left
+
+		//ch.advance is in 1/64s of a pixel
+		//bitshift by 6 to get value in pixels (2^6 = 64)
+		startX += (ch.advance >> 6) * scale; 
+	}
+
+	glBindVertexArray(m_vao);
 	glBindBuffer(GL_ARRAY_BUFFER,m_vbo);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(glm::vec4) * 6, vertexData.data());
+	//glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(glm::vec4) * 6 * numChars, vertexData.data());
+	glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec4) * 6 * numChars, vertexData.data(), GL_DYNAMIC_DRAW);
+	glDrawArrays(GL_TRIANGLES, 0, numChars * 6);
 
-	glDrawArrays(GL_TRIANGLES, 0, 6);
+	glDepthMask(GL_TRUE);
 }

@@ -35,6 +35,7 @@ bool firstMouse = true;
 bool mouseUnlocked = false;
 float mouseSensitivity = 0.1f;
 bool debugDrawText = false;
+char displayText[128];
 
 void on_mouse_button_pressed(GLFWwindow* window, int button, int action, int mods);
 
@@ -185,8 +186,9 @@ int main() {
 		cubeModel.draw();
 
 		textShader.setInt("_DEBUG", debugDrawText);
+		textShader.setFloat("_Time", currTime);
 
-		textRenderer.draw(&textShader,glm::vec4(1.0f,1.0f,0.0f,1.0f));
+		textRenderer.draw(std::string(displayText), &textShader, glm::vec4(1.0f, 1.0f, 0.0f, 1.0f));
 
 		//DRAW IMGUI
 		ImGui_ImplOpenGL3_NewFrame();
@@ -195,6 +197,7 @@ int main() {
 
 		ImGui::Begin("Settings");
 		ImGui::Checkbox("Debug Draw Text", &debugDrawText);
+		ImGui::InputText("Text", displayText, 256);
 		ImGui::End();
 
 		if (show_demo_window) {
