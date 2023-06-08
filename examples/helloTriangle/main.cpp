@@ -19,6 +19,8 @@
 #include <ew/Material.h>
 #include <ew/Transform.h>
 #include <ew/FlyCamController.h>
+#include <ew/Font.h>
+#include <ew/TextRenderer.h>
 
 const int SCREEN_WIDTH = 1080;
 const int SCREEN_HEIGHT = 720;
@@ -51,6 +53,11 @@ int main() {
 
 	printf("successful!\n");
 
+	printf("Loading fonts...");
+	
+	const char* robotoFontPath = "assets/Roboto-Regular.ttf";
+	ew::Font font_roboto(robotoFontPath);
+
 	printf("Loading models...");
 
 	ew::Texture tex_paving_stones_color("assets/pavingstones_color.jpg");
@@ -59,10 +66,17 @@ int main() {
 	ew::Texture tex_bricks_normal("assets/bricks_normal.jpg");
 
 	ew::Model cubeModel;
-	bool success = cubeModel.loadFromFile("assets/monkey.obj");
+	bool success = cubeModel.loadFromFile("assets/cube.obj");
 	if (success) {
 		printf("successful!\n");
 	}
+
+	ew::Shader textShader;
+	textShader.attach(ew::ShaderStage(ew::ShaderType::VERTEX, "assets/text.vert"));
+	textShader.attach(ew::ShaderStage(ew::ShaderType::FRAGMENT, "assets/text.frag"));
+	textShader.link();
+
+	ew::TextRenderer textRenderer = ew::TextRenderer(&font_roboto);
 
 	ew::Shader shader;
 	ew::ShaderStage vertexShader(ew::ShaderType::VERTEX);
@@ -160,6 +174,8 @@ int main() {
 		material->setMat4("_Projection", camera.getProjectionMatrix());
 		material->updateUniforms();
 		cubeModel.draw();
+
+		textRenderer.draw(&textShader,glm::vec4(1));
 
 		//DRAW IMGUI
 		ImGui_ImplOpenGL3_NewFrame();
