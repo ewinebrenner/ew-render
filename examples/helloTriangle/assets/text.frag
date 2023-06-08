@@ -1,7 +1,6 @@
 #version 330                          
 out vec4 FragColor;
 
-uniform vec4 _Color;
 
 in Vertex{
     vec2 UV;
@@ -10,7 +9,12 @@ in Vertex{
 uniform sampler2D _FontTexture;
 
 uniform int _DEBUG = 0;
+
+uniform vec4 _Color;
+uniform vec3 _OutlineColor;
 uniform float _Time;
+uniform float _Thickness = 0.5;
+uniform float _OutlineThickness = 0.1;
 
 void main(){         
     float a = texture(_FontTexture, fs_in.UV).r;
@@ -18,9 +22,11 @@ void main(){
        FragColor = vec4(a,a,a,1.0);
        return;
     }
-    a = smoothstep(0.495,0.505,a);
+    float baseDistance = 1.0-_Thickness;
+    float alpha = smoothstep(baseDistance-0.02,baseDistance+0.02,a);
 
     vec3 col = _Color.rgb;
-    col.gb += cos(_Time*2.0);
-    FragColor = vec4(col,_Color.a * a);
+    col = mix(_OutlineColor,col,smoothstep(baseDistance+_OutlineThickness-0.01,baseDistance+_OutlineThickness+0.01,a));
+   // col.gb += cos(_Time*2.0);
+    FragColor = vec4(col,_Color.a * alpha);
 }

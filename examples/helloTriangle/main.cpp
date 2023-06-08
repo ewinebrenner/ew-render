@@ -22,6 +22,9 @@
 #include <ew/Font.h>
 #include <ew/TextRenderer.h>
 
+
+void on_mouse_button_pressed(GLFWwindow* window, int button, int action, int mods);
+
 const int SCREEN_WIDTH = 1080;
 const int SCREEN_HEIGHT = 720;
 bool show_demo_window = false;
@@ -35,9 +38,14 @@ bool firstMouse = true;
 bool mouseUnlocked = false;
 float mouseSensitivity = 0.1f;
 bool debugDrawText = false;
-char displayText[128];
 
-void on_mouse_button_pressed(GLFWwindow* window, int button, int action, int mods);
+char displayText[128];
+glm::vec4 textColor = glm::vec4(238.0f / 256.f, 101.0f / 256.f, 126.0f / 256.f, 1.0f);
+glm::vec3 textOutlineColor = glm::vec3(58 / 256.f, 32 / 256.f, 76 / 256.f);
+float textThickness = 0.7;
+float textOutlineThickness = 0.1;
+glm::vec2 textPos = glm::vec2(64);
+float textScale = 2.0;
 
 int main() {
 	printf("Initializing...");
@@ -63,7 +71,9 @@ int main() {
 	
 	const char* robotoFontPath = "assets/Roboto-Regular.ttf";
 	const char* dmitriFontPath = "assets/DIMITRI_.TTF";
-	ew::Font font_roboto(dmitriFontPath);
+	const char* chewyFontPath = "assets/Chewy-Regular.ttf";
+
+	ew::Font font_roboto(chewyFontPath);
 
 	printf("Loading models...");
 
@@ -173,7 +183,7 @@ int main() {
 		}
 		
 		//START DRAWING
-		glClearColor(0.1f, 0.2f, 0.3f, 1.0f);
+		glClearColor(128.0f/256,228.0f/256,254.0f/256, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		shader.use();
@@ -188,8 +198,10 @@ int main() {
 
 		textShader.setInt("_DEBUG", debugDrawText);
 		textShader.setFloat("_Time", currTime);
-
-		textRenderer.draw(std::string(displayText), &textShader, glm::vec4(1.0f, 1.0f, 0.0f, 1.0f));
+		textShader.setFloat("_Thickness", textThickness);
+		textShader.setFloat("_OutlineThickness", textOutlineThickness);
+		textShader.setVec3("_OutlineColor", textOutlineColor);
+		textRenderer.draw(std::string(displayText), &textShader, textColor, textPos.x,textPos.y,textScale);
 
 		//DRAW IMGUI
 		ImGui_ImplOpenGL3_NewFrame();
@@ -199,6 +211,12 @@ int main() {
 		ImGui::Begin("Settings");
 		ImGui::Checkbox("Debug Draw Text", &debugDrawText);
 		ImGui::InputText("Text", displayText, 256);
+		ImGui::DragFloat2("Text Pos", &textPos.x);
+		ImGui::SliderFloat("Text Scale", &textScale, 0.0f, 5.0f);
+		ImGui::ColorEdit4("Text Color", &textColor.r);
+		ImGui::ColorEdit3("Text Outline Color", &textOutlineColor.r);
+		ImGui::SliderFloat("Text Thickness", &textThickness, 0.0f, 1.0f);
+		ImGui::SliderFloat("Text Outline Thickness",&textOutlineThickness, 0.0f, 1.0f);
 		ImGui::End();
 
 		if (show_demo_window) {

@@ -23,7 +23,7 @@ ew::TextRenderer::TextRenderer(ew::Font* font)
 	glBindVertexArray(0);
 }
 
-void ew::TextRenderer::draw(const std::string& text, ew::Shader* shader, glm::vec4 color)
+void ew::TextRenderer::draw(const std::string& text, ew::Shader* shader, glm::vec4 color, float x, float y, float scale = 1.0)
 {
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -46,10 +46,8 @@ void ew::TextRenderer::draw(const std::string& text, ew::Shader* shader, glm::ve
 	std::vector<glm::vec4> vertexData;
 	vertexData.reserve(numChars * 6);
 
-	float scale = 1.0;
-
-	float startX = 64.0f;
-	float startY = 64.0f;
+	float startX = x;
+	float startY = y;
 
 	std::string::const_iterator c;
 	for (c = text.begin(); c!=text.end();c++)
