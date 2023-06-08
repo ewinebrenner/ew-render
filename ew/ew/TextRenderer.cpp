@@ -47,10 +47,12 @@ void ew::TextRenderer::draw(ew::Shader* shader, glm::vec4 color)
 	std::vector<glm::vec4> vertexData;
 	vertexData.reserve(6);
 
+	float scale = 4;
+
 	float xpos = 64.f;
 	float ypos = 64.f;
-	float w = c.size.x;
-	float h = c.size.y;
+	float w = c.size.x * scale;
+	float h = c.size.y * scale;
 	
 	vertexData.push_back(glm::vec4(xpos, ypos, 0.0f, 1.0f));
 	vertexData.push_back(glm::vec4(xpos + w, ypos, 1.0f, 1.0f));

@@ -32,7 +32,11 @@ ew::FlyCamController cameraController = ew::FlyCamController(&camera);
 
 double prevMouseX, prevMouseY;
 bool firstMouse = true;
+bool mouseUnlocked = false;
 float mouseSensitivity = 0.1f;
+bool debugDrawText = false;
+
+void on_mouse_button_pressed(GLFWwindow* window, int button, int action, int mods);
 
 int main() {
 	printf("Initializing...");
@@ -46,6 +50,7 @@ int main() {
 	assert(window != nullptr);
 	glfwMakeContextCurrent(window);
 	assert(glewInit() == GLEW_OK);
+	glfwSetMouseButtonCallback(window, on_mouse_button_pressed);
 
 	ImGui::CreateContext();
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
@@ -121,46 +126,50 @@ int main() {
 		if (glfwGetKey(window, GLFW_KEY_ESCAPE)) {
 			glfwSetWindowShouldClose(window, true);
 		}
-		//Get cam rotation deltas from mouse position
-		double mouseX, mouseY;
-		glfwGetCursorPos(window, &mouseX, &mouseY);
-		if (firstMouse) {
+
+		if (!mouseUnlocked) {
+			//Get cam rotation deltas from mouse position
+			double mouseX, mouseY;
+			glfwGetCursorPos(window, &mouseX, &mouseY);
+			if (firstMouse) {
+				prevMouseX = mouseX;
+				prevMouseY = mouseY;
+				firstMouse = false;
+			}
+
+			float pitchDelta = (mouseY - prevMouseY) * mouseSensitivity;
+			float yawDelta = (prevMouseX - mouseX) * mouseSensitivity;
+
 			prevMouseX = mouseX;
 			prevMouseY = mouseY;
-			firstMouse = false;
-		}
-	
-		float pitchDelta = (mouseY - prevMouseY) * mouseSensitivity;
-		float yawDelta = (prevMouseX - mouseX) * mouseSensitivity;
 
-		prevMouseX = mouseX;
-		prevMouseY = mouseY;
+			cameraController.addPitch(pitchDelta);
+			cameraController.addYaw(yawDelta);
+			cameraController.updateCamRotation();
 
-		cameraController.addPitch(pitchDelta);
-		cameraController.addYaw(yawDelta);
-		cameraController.updateCamRotation();
+			//Camera movement
+			float moveDelta = camMoveSpeed * deltaTime;
+			if (glfwGetKey(window, GLFW_KEY_D)) {
+				cameraController.moveRight(-moveDelta);
+			}
+			if (glfwGetKey(window, GLFW_KEY_A)) {
+				cameraController.moveRight(moveDelta);
+			}
+			if (glfwGetKey(window, GLFW_KEY_W)) {
+				cameraController.moveForward(moveDelta);
+			}
+			if (glfwGetKey(window, GLFW_KEY_S)) {
+				cameraController.moveForward(-moveDelta);
+			}
+			if (glfwGetKey(window, GLFW_KEY_E)) {
+				cameraController.moveUp(moveDelta);
+			}
+			if (glfwGetKey(window, GLFW_KEY_Q)) {
+				cameraController.moveUp(-moveDelta);
+			}
 
-		//Camera movement
-		float moveDelta = camMoveSpeed * deltaTime;
-		if (glfwGetKey(window, GLFW_KEY_D)) {
-			cameraController.moveRight(-moveDelta);
 		}
-		if (glfwGetKey(window, GLFW_KEY_A)) {
-			cameraController.moveRight(moveDelta);
-		}
-		if (glfwGetKey(window, GLFW_KEY_W)) {
-			cameraController.moveForward(moveDelta);
-		}
-		if (glfwGetKey(window, GLFW_KEY_S)) {
-			cameraController.moveForward(-moveDelta);
-		}
-		if (glfwGetKey(window, GLFW_KEY_E)) {
-			cameraController.moveUp(moveDelta);
-		}
-		if (glfwGetKey(window, GLFW_KEY_Q)) {
-			cameraController.moveUp(-moveDelta);
-		}
-
+		
 		//START DRAWING
 		glClearColor(0.1f, 0.2f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -175,7 +184,9 @@ int main() {
 		material->updateUniforms();
 		cubeModel.draw();
 
-		textRenderer.draw(&textShader,glm::vec4(1));
+		textShader.setInt("_DEBUG", debugDrawText);
+
+		textRenderer.draw(&textShader,glm::vec4(1.0f,1.0f,0.0f,1.0f));
 
 		//DRAW IMGUI
 		ImGui_ImplOpenGL3_NewFrame();
@@ -183,7 +194,7 @@ int main() {
 		ImGui::NewFrame();
 
 		ImGui::Begin("Settings");
-		ImGui::Text("Hello");
+		ImGui::Checkbox("Debug Draw Text", &debugDrawText);
 		ImGui::End();
 
 		if (show_demo_window) {
@@ -196,4 +207,19 @@ int main() {
 		glfwSwapBuffers(window);
 	}
 	printf("Shutting down...");
+}
+
+void on_mouse_button_pressed(GLFWwindow* window, int button, int action, int mods)
+{
+	if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) {
+		if (!mouseUnlocked) {
+			mouseUnlocked = true;
+			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+		}
+		else {
+			mouseUnlocked = false;
+			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+			firstMouse = true;
+		}
+	}
 }

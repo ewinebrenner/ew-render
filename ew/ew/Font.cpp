@@ -20,12 +20,14 @@ ew::Font::Font(const char* filePath)
 		printf("ERROR::FREETYPE: Failed to load font %s", filePath);
 		return;
 	}
-	FT_Set_Pixel_Sizes(face, 0, 48);
+	FT_Set_Pixel_Sizes(face, 0, 64);
 
 	//TODO: Load all characters
 	if (FT_Load_Char(face, 'A', FT_LOAD_RENDER)) {
 		printf("Failed to load glph X");
 	}
+	FT_GlyphSlot slot = face->glyph;
+	FT_Render_Glyph(slot, FT_RENDER_MODE_SDF);
 
 	//Create atlas texture
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
