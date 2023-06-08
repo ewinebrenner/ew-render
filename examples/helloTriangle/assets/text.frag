@@ -21,6 +21,6 @@ void main(){
     a = smoothstep(0.495,0.505,a);
 
     vec3 col = _Color.rgb;
-    col.r += cos(_Time*2.0);
+    col.gb += cos(_Time*2.0);
     FragColor = vec4(col,_Color.a * a);
 }

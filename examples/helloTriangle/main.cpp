@@ -62,7 +62,8 @@ int main() {
 	printf("Loading fonts...");
 	
 	const char* robotoFontPath = "assets/Roboto-Regular.ttf";
-	ew::Font font_roboto(robotoFontPath);
+	const char* dmitriFontPath = "assets/DIMITRI_.TTF";
+	ew::Font font_roboto(dmitriFontPath);
 
 	printf("Loading models...");
 
