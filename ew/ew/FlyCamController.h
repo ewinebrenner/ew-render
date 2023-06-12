@@ -8,8 +8,8 @@ namespace ew {
 		void moveForward(float delta);
 		void moveRight(float delta);
 		void moveUp(float delta);
-		void addPitch(float delta);
-		void addYaw(float delta);
+		void addPitch(float deltaDegrees);
+		void addYaw(float deltaDegrees);
 		void updateCamRotation();
 	private:
 		Camera* m_camera = nullptr;

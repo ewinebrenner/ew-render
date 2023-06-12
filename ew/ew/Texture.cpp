@@ -1,6 +1,7 @@
 #include "Texture.h"
 #include "stb_image.h"
 #include <GL/glew.h>
+#include <assert.h>
 
 ew::Texture::Texture(const char* filePath, bool mipmap)
 {
@@ -11,6 +12,8 @@ ew::Texture::Texture(const char* filePath, bool mipmap)
 		printf("Failed to load texture %s", filePath);
 		return;
 	}
+	assert(data != NULL);
+	
 
 	GLenum format = getOGLTextureFormat(numChannels);
 	glGenTextures(1, &m_id);
@@ -25,11 +28,13 @@ ew::Texture::Texture(const char* filePath, bool mipmap)
 	glTexImage2D(GL_TEXTURE_2D, 0, format,
 		width, height, 0, format, GL_UNSIGNED_BYTE, data);
 
-	//if (mipmap)
 	glGenerateMipmap(GL_TEXTURE_2D);
 	
 	glBindTexture(GL_TEXTURE_2D, 0);
 	stbi_image_free(data);
+
+	m_width = width;
+	m_height = height;
 }
 
 unsigned int ew::Texture::getOGLTextureFormat(int numChannels)
@@ -44,4 +49,21 @@ unsigned int ew::Texture::getOGLTextureFormat(int numChannels)
 	default:
 		return GL_RGBA;
 	}
+}
+
+void ew::Texture::setFilter(ew::FilterMode filterMode) {
+	int glFilter;
+	switch (filterMode) {
+	case ew::FilterMode::Nearest:
+		glFilter = GL_NEAREST;
+		break;
+	default:
+		glFilter = GL_LINEAR;
+		break;
+	}
+	glBindTexture(GL_TEXTURE_2D, m_id);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, glFilter);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, glFilter);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	return;
 }

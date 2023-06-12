@@ -21,6 +21,7 @@ namespace ew {
 		void setMat4(keyType name, const glm::mat4& value);
 		void updateUniforms();
 		void use();
+		inline Shader* getShader()const { return m_shader; }
 	private:
 		Shader* m_shader;
 		std::map<keyType, Texture*> m_textureValues;

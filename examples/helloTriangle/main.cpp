@@ -21,7 +21,7 @@
 #include <ew/FlyCamController.h>
 #include <ew/Font.h>
 #include <ew/TextRenderer.h>
-
+#include <ew/SpriteRenderer.h>
 
 void on_mouse_button_pressed(GLFWwindow* window, int button, int action, int mods);
 
@@ -95,14 +95,34 @@ int main() {
 
 	ew::TextRenderer textRenderer = ew::TextRenderer(&font_roboto);
 
+	//Sprite shader, used for drawing atlased sprites
+	ew::Shader spriteShader;
+	{
+		ew::ShaderStage vertexShader(ew::ShaderType::VERTEX);
+		vertexShader.loadSourceFromFile("assets/sprite.vert");
+		ew::ShaderStage fragmentShader(ew::ShaderType::FRAGMENT);
+		fragmentShader.loadSourceFromFile("assets/sprite.frag");
+		spriteShader.attach(vertexShader);
+		spriteShader.attach(fragmentShader);
+		spriteShader.link();
+	}
+
+	ew::Texture spriteAtlas = ew::Texture("assets/player_sheet.png");
+	spriteAtlas.setFilter(ew::FilterMode::Nearest);
+
+	ew::SpriteRenderer spriteRenderer;
+
 	ew::Shader shader;
-	ew::ShaderStage vertexShader(ew::ShaderType::VERTEX);
-	vertexShader.loadSourceFromFile("assets/unlit.vert");
-	ew::ShaderStage fragmentShader(ew::ShaderType::FRAGMENT);
-	fragmentShader.loadSourceFromFile("assets/unlit.frag");
-	shader.attach(vertexShader);
-	shader.attach(fragmentShader);
-	shader.link();
+	{
+		ew::ShaderStage vertexShader(ew::ShaderType::VERTEX);
+		vertexShader.loadSourceFromFile("assets/unlit.vert");
+		ew::ShaderStage fragmentShader(ew::ShaderType::FRAGMENT);
+		fragmentShader.loadSourceFromFile("assets/unlit.frag");
+		shader.attach(vertexShader);
+		shader.attach(fragmentShader);
+		shader.link();
+	}
+
 
 	ew::Material stoneMaterial(&shader);
 	stoneMaterial.setTexture("_Texture", &tex_paving_stones_color);
@@ -120,13 +140,15 @@ int main() {
 
 	//Rendering config
 	glEnable(GL_DEPTH_TEST);
-	glCullFace(GL_BACK);
+	glEnable(GL_CULL_FACE);
+	//glCullFace(GL_BACK);
 
 	//Camera settings
 	float camMoveSpeed = 20.0f;
-	camera.getTransform()->translate(glm::vec3(0, 0, -10));
+	camera.getTransform()->translate(glm::vec3(0, 0, 10));
 	camera.setFov(60.0f);
 	camera.setAspectRatio((float)SCREEN_WIDTH / SCREEN_HEIGHT);
+	cameraController.addYaw(180);
 
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
@@ -186,21 +208,49 @@ int main() {
 		glClearColor(128.0f/256,228.0f/256,254.0f/256, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		shader.use();
+		
+		cubeTransform.rotate(deltaTime, glm::vec3(0, 1, 0));
 
-		//cubeTransform.rotate(deltaTime, glm::vec3(0, 1, 0));
-
+		//Draw 3D Geometry
+		material->use();
 		material->setMat4("_Model", cubeTransform.localToWorld());
 		material->setMat4("_View", camera.getViewMatrix());
 		material->setMat4("_Projection", camera.getProjectionMatrix());
 		material->updateUniforms();
 		cubeModel.draw();
 
+
+		//Draw sprites
+		glm::mat4 spriteMVP = camera.getProjectionMatrix() * camera.getViewMatrix() * glm::mat4(1);
+		spriteRenderer.begin(&spriteShader, spriteMVP);
+		int numSprites = 10000;
+		int numCol = 100;
+
+		for (size_t i = 0; i < 10000; i++)
+		{
+			float t = (float)i / 10000;
+			//glm::vec3 startColor = glm::vec3(1.0);
+			//glm::vec3 endColor = glm::vec3(1.0, 0.0, 0.0);
+			glm::vec3 rgb;// = startColor + (endColor - startColor) * t;
+			rgb.r = (float)(i % numCol) / numCol;
+			rgb.g = (float)(i / numCol) / (numSprites / numCol);
+			rgb.b = 1.0f;
+
+			glm::vec3 position = glm::vec3((i % numCol) * 0.5f, (i / numCol) * 1.0f,t);
+			position.y += glm::sin(position.x + currTime);
+			spriteRenderer.draw(&spriteAtlas, glm::vec4(32 * (i % 2) + 32 * ((int)currTime%2), 0.0f, 32.0f, 32.0f), position, glm::vec4(rgb, 1.0f));
+		}
+
+		//spriteRenderer.draw(&spriteAtlas, glm::vec4(32.0f, 0.0f, 32.0f, 32.0f), glm::vec3(2.0f, 2.0f, 0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 1.0f));
+		//spriteRenderer.draw(&spriteAtlas, glm::vec4(0.0f, 0.0f, 32.0f, 32.0f), glm::vec3(4.0f, 2.0f, 0.0f), glm::vec4(1.0f, 1.0f, 0.0f, 1.0f));
+		spriteRenderer.end();
+
 		textShader.setInt("_DEBUG", debugDrawText);
 		textShader.setFloat("_Time", currTime);
 		textShader.setFloat("_Thickness", textThickness);
 		textShader.setFloat("_OutlineThickness", textOutlineThickness);
 		textShader.setVec3("_OutlineColor", textOutlineColor);
+
 		textRenderer.draw(std::string(displayText), &textShader, textColor, textPos.x,textPos.y,textScale);
 
 		//DRAW IMGUI

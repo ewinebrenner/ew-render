@@ -23,15 +23,15 @@ void ew::FlyCamController::moveUp(float delta)
 	t->translate(t->getUp() * delta);
 }
 
-void ew::FlyCamController::addPitch(float delta)
+void ew::FlyCamController::addPitch(float deltaDegrees)
 {
-	m_pitch += delta;
+	m_pitch += deltaDegrees;
 	m_pitch = glm::clamp(m_pitch, -89.0f, 89.0f);
 }
 
-void ew::FlyCamController::addYaw(float delta)
+void ew::FlyCamController::addYaw(float deltaDegrees)
 {
-	m_yaw += delta;
+	m_yaw += deltaDegrees;
 }
 
 void ew::FlyCamController::updateCamRotation()

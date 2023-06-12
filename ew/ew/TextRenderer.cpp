@@ -28,6 +28,9 @@ ew::TextRenderer::TextRenderer(ew::Font* font)
 
 void ew::TextRenderer::draw(const std::string& text, ew::Shader* shader, glm::vec4 color, float x, float y, float scale = 1.0)
 {
+	if (text.empty())
+		return;
+
 	shader->use();
 
 	glActiveTexture(GL_TEXTURE0);
