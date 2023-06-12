@@ -39,14 +39,15 @@ void ew::SpriteRenderer::begin(Shader* shader, const glm::mat4& transform)
 	m_transform = transform;
 }
 
-void ew::SpriteRenderer::draw(Texture* sourceTex, glm::vec4 sourceRect, glm::vec3 pos, glm::vec4 color)
+void ew::SpriteRenderer::draw(Texture* sourceTex, glm::vec4 sourceRect, glm::vec3 pos, glm::vec4 color, glm::vec2 scale, float rotation, glm::vec2 origin)
 {
 	//Zero area source rect, nothing will be visible
 	if (sourceRect.z <= 0 || sourceRect.w <= 0)
 		return;
 
-	int textureIndex;
 	//Find or add texture to textures array
+	//Texture index is used to choose from uniform sampler2D _Textures[]
+	int textureIndex;
 	std::vector<Texture*>::iterator it = std::find(m_textures.begin(), m_textures.end(), sourceTex);
 	if (it == m_textures.end()) {
 		m_textures.push_back(sourceTex);
@@ -56,19 +57,33 @@ void ew::SpriteRenderer::draw(Texture* sourceTex, glm::vec4 sourceRect, glm::vec
 		textureIndex = it - m_textures.begin();
 	}
 
+	//Vertex positions
+	//Pre-combined TRS matrix
+	float rad = glm::radians(rotation);
+	glm::mat3 transform = glm::mat3(1);
+	transform[0][0] = glm::cos(rad) * scale.x;
+	transform[1][0] = -glm::sin(rad) * scale.y;
+	transform[0][1] = glm::sin(rad) * scale.x;
+	transform[1][1] = glm::cos(rad) * scale.y;
+	transform[2][0] = pos.x;
+	transform[2][1] = pos.y;
+	transform[2][2] = pos.z;
+
+	glm::vec3 vOrigin = glm::vec3(-origin.x, -origin.y, 1.0f);
+
 	glm::vec3 vPositions[4] = {
-		 pos,
-		 pos + glm::vec3(1.0f, 0.0f, 0.0f),
-		 pos + glm::vec3(1.0f, 1.0f, 0.0f),
-		 pos + glm::vec3(0.0f, 1.0f, 0.0f)
+		 transform * vOrigin, //Bottom left
+		 transform * (vOrigin + glm::vec3(1.0f,0.0f,0.0f)), //Bottom right
+		 transform * (vOrigin + glm::vec3(1.0f,1.0f,0.0f)), //Top right
+		 transform * (vOrigin + glm::vec3(0.0f,1.0f,0.0f)) //Top left
 	};
 
+	//Calculate 0-1 UVs for each quad
 	float texWidth = sourceTex->getWidth();
 	float texHeight = sourceTex->getHeight();
 	float uvWidth = sourceRect.z / texWidth;
 	float uvHeight = sourceRect.w / texHeight;
 	glm::vec2 uvMin = glm::vec2(sourceRect.x / texWidth, sourceRect.y / texHeight);
-
 	glm::vec2 vUVs[4] = {
 		uvMin,
 		uvMin + glm::vec2(uvWidth, 0.0f),
@@ -87,7 +102,7 @@ void ew::SpriteRenderer::draw(Texture* sourceTex, glm::vec4 sourceRect, glm::vec
 		m_vertices.push_back(v);
 	}
 
-	//CCW winding order
+	//2 triangles, CCW winding order
 	m_indices.push_back(startIndex);
 	m_indices.push_back(startIndex + 1);
 	m_indices.push_back(startIndex + 2);
@@ -116,12 +131,16 @@ void ew::SpriteRenderer::end()
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glDepthMask(GL_FALSE);
+	glDisable(GL_CULL_FACE);
 	glBindVertexArray(m_vao);
 	glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(SpriteVertex) * m_vertices.size(), m_vertices.data(), GL_DYNAMIC_DRAW);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ebo);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * m_indices.size(), m_indices.data(), GL_DYNAMIC_DRAW);
+
 	glDrawElements(GL_TRIANGLES, (GLsizei)m_indices.size(), GL_UNSIGNED_INT, NULL);
+
 	glBindVertexArray(0);
 	glDepthMask(GL_TRUE);
+	glEnable(GL_CULL_FACE);
 }

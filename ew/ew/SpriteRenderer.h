@@ -10,7 +10,7 @@ namespace ew {
 	public:
 		SpriteRenderer();
 		void begin(Shader* shader, const glm::mat4& transform);
-		void draw(Texture* sourceTex, glm::vec4 sourceRect, glm::vec3 pos, glm::vec4 color);
+		void draw(Texture* sourceTex, glm::vec4 sourceRect, glm::vec3 pos, glm::vec4 color, glm::vec2 scale, float rotation, glm::vec2 origin);
 		void end();
 	private:
 		struct SpriteVertex {

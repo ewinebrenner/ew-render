@@ -47,6 +47,13 @@ float textOutlineThickness = 0.1;
 glm::vec2 textPos = glm::vec2(64);
 float textScale = 2.0;
 
+struct SpriteSettings {
+	glm::vec4 color = glm::vec4(1.0f);
+	glm::vec2 scale = glm::vec2(1.0f);
+	glm::vec2 origin = glm::vec2(0.5f);
+	float rotation = 0.0f;
+}spriteSettings;
+
 int main() {
 	printf("Initializing...");
 	assert(glfwInit());
@@ -222,27 +229,33 @@ int main() {
 
 		//Draw sprites
 		glm::mat4 spriteMVP = camera.getProjectionMatrix() * camera.getViewMatrix() * glm::mat4(1);
+		//Clear out vertex buffer
 		spriteRenderer.begin(&spriteShader, spriteMVP);
-		int numSprites = 10000;
-		int numCol = 100;
 
-		for (size_t i = 0; i < 10000; i++)
+		//Send a bunch of individual "sprites" into vertex buffer
+		int numSprites = 100;
+		int numCol = 10;
+
+		for (size_t i = 0; i < numSprites; i++)
 		{
-			float t = (float)i / 10000;
-			//glm::vec3 startColor = glm::vec3(1.0);
-			//glm::vec3 endColor = glm::vec3(1.0, 0.0, 0.0);
-			glm::vec3 rgb;// = startColor + (endColor - startColor) * t;
-			rgb.r = (float)(i % numCol) / numCol;
-			rgb.g = (float)(i / numCol) / (numSprites / numCol);
-			rgb.b = 1.0f;
-
-			glm::vec3 position = glm::vec3((i % numCol) * 0.5f, (i / numCol) * 1.0f,t);
-			position.y += glm::sin(position.x + currTime);
-			spriteRenderer.draw(&spriteAtlas, glm::vec4(32 * (i % 2) + 32 * ((int)currTime%2), 0.0f, 32.0f, 32.0f), position, glm::vec4(rgb, 1.0f));
+			float t = (float)i / numSprites;
+			/*glm::vec4 color(
+				(float)(i % numCol) / numCol,
+				(float)(i / numCol) / (numSprites / numCol),
+				1.0f,
+				1.0f
+			);*/
+			glm::vec3 position = glm::vec3((i % numCol) * 1.5f, (i / numCol) * 1.5f,t);
+			//position.y += glm::sin(position.x + currTime);
+			glm::vec4 sourceRect = glm::vec4(32 * (i % 2) + 32 * ((int)currTime % 2), 0.0f, 32.0f, 32.0f);
+			glm::vec4 color = spriteSettings.color;
+			glm::vec2 scale = spriteSettings.scale;
+			float rotation = spriteSettings.rotation;
+			glm::vec2 origin = spriteSettings.origin;
+			spriteRenderer.draw(&spriteAtlas, sourceRect, position, color, scale, rotation, origin);
 		}
 
-		//spriteRenderer.draw(&spriteAtlas, glm::vec4(32.0f, 0.0f, 32.0f, 32.0f), glm::vec3(2.0f, 2.0f, 0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 1.0f));
-		//spriteRenderer.draw(&spriteAtlas, glm::vec4(0.0f, 0.0f, 32.0f, 32.0f), glm::vec3(4.0f, 2.0f, 0.0f), glm::vec4(1.0f, 1.0f, 0.0f, 1.0f));
+		//Send vertex buffer to GPU and draw
 		spriteRenderer.end();
 
 		textShader.setInt("_DEBUG", debugDrawText);
@@ -266,7 +279,14 @@ int main() {
 		ImGui::ColorEdit4("Text Color", &textColor.r);
 		ImGui::ColorEdit3("Text Outline Color", &textOutlineColor.r);
 		ImGui::SliderFloat("Text Thickness", &textThickness, 0.0f, 1.0f);
-		ImGui::SliderFloat("Text Outline Thickness",&textOutlineThickness, 0.0f, 1.0f);
+		ImGui::SliderFloat("Text Outline Thickness", &textOutlineThickness, 0.0f, 1.0f);
+		ImGui::End();
+
+		ImGui::Begin("Sprite");
+		ImGui::ColorEdit4("Color", &spriteSettings.color.r);
+		ImGui::DragFloat2("Scale", &spriteSettings.scale.r, 0.1f, -5.0f, 5.0f);
+		ImGui::SliderFloat2("Origin",&spriteSettings.origin.r, 0.0f, 1.0f);
+		ImGui::SliderFloat("Rotation",&spriteSettings.rotation, 0.0f, 360.0f);
 		ImGui::End();
 
 		if (show_demo_window) {
