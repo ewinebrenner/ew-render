@@ -13,6 +13,9 @@ ew::TextRenderer::TextRenderer(ew::Font* font)
 	glGenBuffers(1, &m_vbo);
 	glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
 
+	glGenBuffers(1, &m_ebo);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ebo);
+
 	//Reserve enough bytes for character vertices
 	glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 6 * 4, NULL, GL_DYNAMIC_DRAW);
 
@@ -25,10 +28,6 @@ ew::TextRenderer::TextRenderer(ew::Font* font)
 
 void ew::TextRenderer::draw(const std::string& text, ew::Shader* shader, glm::vec4 color, float x, float y, float scale = 1.0)
 {
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	glDepthMask(GL_FALSE);
-
 	shader->use();
 
 	glActiveTexture(GL_TEXTURE0);
@@ -44,7 +43,9 @@ void ew::TextRenderer::draw(const std::string& text, ew::Shader* shader, glm::ve
 	unsigned int numChars = text.size();
 
 	std::vector<glm::vec4> vertexData;
-	vertexData.reserve(numChars * 6);
+	vertexData.reserve(numChars * 4);
+	std::vector<unsigned int> indexData;
+	indexData.reserve(numChars * 6);
 
 	float startX = x;
 	float startY = y;
@@ -60,24 +61,34 @@ void ew::TextRenderer::draw(const std::string& text, ew::Shader* shader, glm::ve
 		float w = ch.size.x * scale;
 		float h = ch.size.y * scale;
 
+		unsigned int startIndex = vertexData.size();
+
 		vertexData.push_back(glm::vec4(xpos, ypos, ch.uvMin.x, ch.uvMin.y)); //Bottom Left
 		vertexData.push_back(glm::vec4(xpos + w, ypos, ch.uvMax.x, ch.uvMin.y)); //Bottom right
 		vertexData.push_back(glm::vec4(xpos + w, ypos + h, ch.uvMax.x, ch.uvMax.y)); //Top right
-
-		vertexData.push_back(glm::vec4(xpos + w, ypos + h, ch.uvMax.x, ch.uvMax.y)); //Top right
 		vertexData.push_back(glm::vec4(xpos, ypos + h, ch.uvMin.x, ch.uvMax.y)); //Top left
-		vertexData.push_back(glm::vec4(xpos, ypos, ch.uvMin.x, ch.uvMin.y)); //Bottom Left
+
+		indexData.push_back(startIndex);
+		indexData.push_back(startIndex+1);
+		indexData.push_back(startIndex+2);
+		indexData.push_back(startIndex+2);
+		indexData.push_back(startIndex+3);
+		indexData.push_back(startIndex);
 
 		//ch.advance is in 1/64s of a pixel
 		//bitshift by 6 to get value in pixels (2^6 = 64)
 		startX += (ch.advance >> 6) * scale; 
 	}
 
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glDepthMask(GL_FALSE);
 	glBindVertexArray(m_vao);
 	glBindBuffer(GL_ARRAY_BUFFER,m_vbo);
-	//glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(glm::vec4) * 6 * numChars, vertexData.data());
-	glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec4) * 6 * numChars, vertexData.data(), GL_DYNAMIC_DRAW);
-	glDrawArrays(GL_TRIANGLES, 0, numChars * 6);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec4) * 4 * numChars, vertexData.data(), GL_DYNAMIC_DRAW);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ebo);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * 6 * numChars, indexData.data(), GL_DYNAMIC_DRAW);
+	glDrawElements(GL_TRIANGLES, numChars*6, GL_UNSIGNED_INT, NULL);
 
 	glDepthMask(GL_TRUE);
 }

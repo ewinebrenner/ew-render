@@ -11,6 +11,6 @@ namespace ew {
 		void draw(const std::string& text, ew::Shader* shader, glm::vec4 color, float x, float y, float scale);
 	private:
 		ew::Font* m_font;
-		unsigned int m_vao, m_vbo;
+		unsigned int m_vao, m_vbo, m_ebo;
 	};
 }
