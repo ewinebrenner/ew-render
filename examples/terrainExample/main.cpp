@@ -19,6 +19,7 @@
 #include <ew/Material.h>
 #include <ew/Transform.h>
 #include <ew/FlyCamController.h>
+#include <ew/FPSCounter.h>
 
 const int SCREEN_WIDTH = 1440;
 const int SCREEN_HEIGHT = 960;
@@ -46,7 +47,7 @@ struct TerrainSettings {
 	float frequency = 1.0;
 	float amplitude = 20.0;
 	float textureTiling = 10;
-	int tessLevelOuter = 8;
+	int tessLevelOuter = 24;
 	int tessLevelInner = 5;
 	bool wireFrame = true;
 	float wireFrameThickness = 1.0;
@@ -74,6 +75,7 @@ float terrainHeight = 1756;
 int terrainSubdivisions = 64; //Initial quad patches
 glm::vec3 cameraStartPos = glm::vec3(terrainWidth / 2, 50, terrainHeight / 2);
 float camMoveSpeed = 100.0f;
+float camFarPlane = 1000.0f;
 
 int main() {
 	printf("Initializing...");
@@ -175,8 +177,10 @@ int main() {
 	//Camera settings
 	camera.getTransform()->translate(cameraStartPos);
 	camera.setFov(60.0f);
-	camera.setFarPlane(10000.0f);
+	camera.setFarPlane(camFarPlane);
 	camera.setAspectRatio((float)SCREEN_WIDTH / SCREEN_HEIGHT);
+
+	ew::FPSCounter fpsCounter(0.5f);
 
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
@@ -184,12 +188,14 @@ int main() {
 		prevTime = currTime;
 		currTime = (float)glfwGetTime();
 		float deltaTime = currTime - prevTime;
+		fpsCounter.tick(deltaTime);
 
 		if (glfwGetKey(window, GLFW_KEY_ESCAPE)) {
 			glfwSetWindowShouldClose(window, true);
 		}
 
 		//UPDATE
+
 		updateCamera(window, &cameraController,camMoveSpeed,deltaTime);
 
 		//RENDER
@@ -280,7 +286,9 @@ int main() {
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 
+	
 		ImGui::Begin("Settings");
+		ImGui::LabelText("FPS", std::to_string(fpsCounter.getFPS()).c_str());
 		if (ImGui::SliderFloat3("Light Dir", &skySettings.lightDir.r, -1.0, 1.0)) {
 			skySettings.lightDir = glm::normalize(skySettings.lightDir);
 		}
@@ -297,6 +305,10 @@ int main() {
 		ImGui::DragFloat("TextureTiling", &terrainSettings.textureTiling, 0.01f, 0.0f, 10.0f);
 		ImGui::DragInt("Triangle Pixel Size", &terrainSettings.tessLevelOuter, 1.0f, 1, 128);
 		terrainSettings.tessLevelInner = terrainSettings.tessLevelOuter;
+		if (ImGui::DragFloat("Camera Far Plane", &camFarPlane)) {
+			camera.setFarPlane(camFarPlane);
+		}
+
 		//ImGui::DragInt("Tesselation Inner", &terrainSettings.tessLevelInner, 1.0f, 1, 16);
 		ImGui::Checkbox("Wireframe Render", &terrainSettings.wireFrame);
 		ImGui::SliderFloat("Wireframe Thickness", &terrainSettings.wireFrameThickness, 0.0f, 5.0f);
@@ -420,6 +432,7 @@ void on_mouse_button_pressed(GLFWwindow* window, int button, int action, int mod
 
 void updateCamera(GLFWwindow* window, ew::FlyCamController* cameraController, float camMoveSpeed, float deltaTime)
 {
+
 	float pitchDelta = 0;
 	float yawDelta = 0;
 
