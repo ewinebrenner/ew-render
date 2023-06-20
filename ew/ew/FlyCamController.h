@@ -11,6 +11,7 @@ namespace ew {
 		void addPitch(float deltaDegrees);
 		void addYaw(float deltaDegrees);
 		void updateCamRotation();
+		inline Camera* getCamera() const { return m_camera; }
 	private:
 		Camera* m_camera = nullptr;
 		float m_pitch = 0; //rotation around X axis in degrees
