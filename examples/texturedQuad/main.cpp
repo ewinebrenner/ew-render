@@ -124,7 +124,7 @@ int getTextureFormat(int numComponents) {
 		return GL_RG;
 	}
 }
-unsigned int loadTexture(const char* filePath) {
+unsigned int loadTexture(const char* filePath, int wrapMode, int filterMode) {
 	int width, height, numComponents;
 	unsigned char* data = stbi_load(filePath, &width, &height, &numComponents, 0);
 	if (data == NULL) {
@@ -137,14 +137,34 @@ unsigned int loadTexture(const char* filePath) {
 	glBindTexture(GL_TEXTURE_2D, texture);
 	int format = getTextureFormat(numComponents);
 	glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrapMode);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrapMode);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filterMode);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filterMode);
+
+	float borderColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
+	glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
+
+	glGenerateMipmap(GL_TEXTURE_2D);
+
 	glBindTexture(GL_TEXTURE_2D, NULL);
 	stbi_image_free(data);
 	return texture;
 }
+
+struct TextureSettings {
+	const char* wrapModes[4] = { "Repeat","Clamp to Edge", "Clamp to Border", "Mirrored Repeat"};
+	const int wrapModeEnums[4] = { GL_REPEAT, GL_CLAMP_TO_EDGE, GL_CLAMP_TO_BORDER, GL_MIRRORED_REPEAT };
+
+	const char* filterModes[3] = { "Nearest","Linear","Mipmap Linear"};
+	const int filterModeEnums[3] = {GL_NEAREST, GL_LINEAR, GL_LINEAR_MIPMAP_LINEAR};
+
+	int wrapIndex = 0;
+	int filterIndex = 0;
+	float scale = 1.0f;
+	float borderColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
+};
+TextureSettings textureSettings;
 
 int main() {
 	printf("Initializing...");
@@ -165,11 +185,16 @@ int main() {
 		return 1;
 	}
 
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGui_ImplGlfw_InitForOpenGL(window, true);
+	ImGui_ImplOpenGL3_Init();
+
 	std::string vertexShaderSource = loadShaderSourceFromFile("assets/unlit.vert");
 	std::string fragmentShaderSource = loadShaderSourceFromFile("assets/unlit.frag");
 	unsigned int shader = createShaderProgram(vertexShaderSource.c_str(), fragmentShaderSource.c_str());
 	unsigned int vaoA = createVAO(vertices, 4, indices, 6);
-	unsigned int texture = loadTexture("assets/bricks_color.jpg");
+	unsigned int texture = loadTexture("assets/bricks_color.jpg",GL_REPEAT,GL_LINEAR);
 
 	//Set static uniforms
 	glActiveTexture(GL_TEXTURE0);
@@ -177,6 +202,7 @@ int main() {
 	int textureLocation = glGetUniformLocation(shader, "uTexture");
 	glUniform1i(textureLocation, 0);
 	int timeLocation = glGetUniformLocation(shader, "uTime");
+	int scaleLocation = glGetUniformLocation(shader, "uScale");
 
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
@@ -194,6 +220,35 @@ int main() {
 		//Draw using elements
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL);
 
+		//Render UI
+		{
+			ImGui_ImplGlfw_NewFrame();
+			ImGui_ImplOpenGL3_NewFrame();
+			ImGui::NewFrame();
+
+			ImGui::Begin("Settings");
+			if (ImGui::Combo("Wrap Mode", &textureSettings.wrapIndex, textureSettings.wrapModes, IM_ARRAYSIZE(textureSettings.wrapModes))) {
+				//glBindTexture(GL_TEXTURE_2D, texture);
+				GLint wrapEnum = textureSettings.wrapModeEnums[textureSettings.wrapIndex];
+				glTextureParameteri(texture, GL_TEXTURE_WRAP_S, wrapEnum);
+				glTextureParameteri(texture, GL_TEXTURE_WRAP_T, wrapEnum);
+			}
+			if (ImGui::Combo("Filter Mode", &textureSettings.filterIndex, textureSettings.filterModes, IM_ARRAYSIZE(textureSettings.filterModes))) {
+				GLint filterEnum = textureSettings.filterModeEnums[textureSettings.filterIndex];
+				glTextureParameteri(texture, GL_TEXTURE_MIN_FILTER, filterEnum);
+				glTextureParameteri(texture, GL_TEXTURE_MAG_FILTER, filterEnum);
+			}
+			if (ImGui::DragFloat("Scale", &textureSettings.scale, 0.1f)) {
+				glUniform1f(scaleLocation, textureSettings.scale);
+			}
+			if (ImGui::ColorEdit3("Border Color", textureSettings.borderColor)) {
+				glTextureParameterfv(texture, GL_TEXTURE_BORDER_COLOR, textureSettings.borderColor);
+			}
+			ImGui::End();
+
+			ImGui::Render();
+			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+		}
 
 		glfwSwapBuffers(window);
 	}
