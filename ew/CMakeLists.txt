@@ -19,7 +19,7 @@ add_library(ew STATIC ${EW_SRC} ${EW_INC})
 
 find_package(OpenGL REQUIRED)
 
-target_link_libraries(ew PUBLIC glew IMGUI glm assimp freetype)
+target_link_libraries(ew PUBLIC IMGUI glm assimp freetype)
 
 install (TARGETS ew DESTINATION lib)
 install (FILES ${EW_INC} DESTINATION include/ew)

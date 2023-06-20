@@ -1,5 +1,5 @@
 #pragma once
-#include "GL/glew.h"
+#include "external/glad.h"
 #include <glm/glm.hpp>
 #include <string>
 

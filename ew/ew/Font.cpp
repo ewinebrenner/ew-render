@@ -1,5 +1,5 @@
 #include "Font.h"
-#include <GL/glew.h>
+#include "external/glad.h"
 FT_Library ew::Font::m_ftLibrary = nullptr;
 bool ew::Font::s_ftLibraryInitialized = false;
 

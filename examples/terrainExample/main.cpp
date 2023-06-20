@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include <GL/glew.h>
+#include <ew/external/glad.h>
 #include <GLFW/glfw3.h>
 #include <assert.h>
 
@@ -87,7 +87,10 @@ int main() {
 	glfwSetMouseButtonCallback(window, on_mouse_button_pressed);
 	assert(window != nullptr);
 	glfwMakeContextCurrent(window);
-	assert(glewInit() == GLEW_OK);
+	if (!gladLoadGL(glfwGetProcAddress)) {
+		printf("GLAD failed to load GL headers");
+		return 1;
+	}
 
 	ImGui::CreateContext();
 	ImGui_ImplGlfw_InitForOpenGL(window, true);

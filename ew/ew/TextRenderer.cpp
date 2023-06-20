@@ -1,5 +1,5 @@
 #include "TextRenderer.h"
-#include <GL/glew.h>
+#include "external/glad.h"
 #include <glm/glm.hpp>
 #include <glm/gtx/transform.hpp>
 #include <vector>

@@ -19,7 +19,7 @@ ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/assets/)
 
 install(FILES ${TERRAIN_EXAMPLE_INC} DESTINATION include/terrainExample)
 add_executable(terrainExample ${TERRAIN_EXAMPLE_SRC} ${TERRAIN_EXAMPLE_INC} ${TERRAIN_EXAMPLE_ASSETS})
-target_link_libraries(terrainExample PUBLIC ew glew IMGUI glm assimp)
+target_link_libraries(terrainExample PUBLIC ew IMGUI glm assimp)
 target_include_directories(terrainExample PUBLIC ${EW_INC_DIR})
 #Trigger asset copy when helloTriangle is built
 add_dependencies(terrainExample copyAssetsTerrain)

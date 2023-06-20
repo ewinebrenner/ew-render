@@ -1,4 +1,4 @@
-#include <GL/glew.h>
+#include "external/glad.h"
 #include "SpriteRenderer.h"
 
 ew::SpriteRenderer::SpriteRenderer()

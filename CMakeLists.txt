@@ -19,7 +19,6 @@ include(external/cpm.cmake)
 
 # add libraries
 include(external/glfw.cmake)
-include(external/glew.cmake)
 include(external/imgui.cmake)
 include(external/assimp.cmake)
 include(external/glm.cmake)

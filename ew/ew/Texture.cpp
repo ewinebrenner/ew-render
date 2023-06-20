@@ -1,6 +1,6 @@
 #include "Texture.h"
-#include "stb_image.h"
-#include <GL/glew.h>
+#include "external/stb_image.h"
+#include "external/glad.h"
 #include <assert.h>
 
 ew::Texture::Texture(const char* filePath, bool mipmap)
@@ -41,7 +41,7 @@ unsigned int ew::Texture::getOGLTextureFormat(int numChannels)
 {
 	switch (numChannels) {
 	case 1:
-		return GL_R;
+		return GL_R16;
 	case 2:
 		return GL_RG;
 	case 3:

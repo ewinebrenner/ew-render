@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include <GL/glew.h>
+#include <ew/external/glad.h>
 #include <GLFW/glfw3.h>
 #include <assert.h>
 
@@ -56,16 +56,23 @@ struct SpriteSettings {
 
 int main() {
 	printf("Initializing...");
-	assert(glfwInit());
 	if (!glfwInit()) {
 		printf("GLFW failed to init!");
 		return 1;
 	}
 
 	GLFWwindow* window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "OpenGLExample", NULL, NULL);
-	assert(window != nullptr);
+	if (window == NULL) {
+		printf("GLFW failed to init window\n");
+		return 1;
+	}
 	glfwMakeContextCurrent(window);
-	assert(glewInit() == GLEW_OK);
+
+	if (!gladLoadGL(glfwGetProcAddress)) {
+		printf("GLAD failed to load\n");
+		return 1;
+	}
+
 	glfwSetMouseButtonCallback(window, on_mouse_button_pressed);
 
 	ImGui::CreateContext();

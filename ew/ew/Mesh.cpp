@@ -1,6 +1,5 @@
 #include "Mesh.h"
-#include <GL/glew.h>
-
+#include "external/glad.h"
 ew::Mesh::Mesh() {
 
 }

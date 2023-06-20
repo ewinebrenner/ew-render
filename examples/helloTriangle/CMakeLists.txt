@@ -19,7 +19,7 @@ ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/assets/)
 
 install(FILES ${HELLOTRIANGLE_INC} DESTINATION include/helloTriangle)
 add_executable(helloTriangle ${HELLOTRIANGLE_SRC} ${HELLOTRIANGLE_INC} ${HELLOTRIANGLE_ASSETS})
-target_link_libraries(helloTriangle PUBLIC ew glew IMGUI glm assimp freetype)
+target_link_libraries(helloTriangle PUBLIC ew IMGUI glm assimp freetype)
 target_include_directories(helloTriangle PUBLIC ${EW_INC_DIR} ${stb_INCLUDE_DIR})
 #Trigger asset copy when helloTriangle is built
 add_dependencies(helloTriangle copyAssets)
