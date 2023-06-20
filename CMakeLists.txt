@@ -23,3 +23,4 @@ include(external/imgui.cmake)
 
 add_subdirectory(ew)
 add_subdirectory(examples/helloTriangle)
+add_subdirectory(examples/texturedQuad)
