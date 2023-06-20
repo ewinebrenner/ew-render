@@ -1,13 +1,17 @@
 #include <stdio.h>
 #include <math.h>
 
-#include <GL/glew.h>
+#define GLAD_GL_IMPLEMENTATION
+#include <ew/external/glad.h>
+
 #include <GLFW/glfw3.h>
 #include <assert.h>
 
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
+
+#include <ew/external/stb_image.h>
 
 const int SCREEN_WIDTH = 1080;
 const int SCREEN_HEIGHT = 720;
@@ -108,19 +112,26 @@ unsigned int createVAO(float* vertexData, int numVertices) {
 
 int main() {
 	printf("Initializing...");
-	assert(glfwInit());
 	if (!glfwInit()) {
 		printf("GLFW failed to init!");
 		return 1;
 	}
 
 	GLFWwindow* window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "OpenGLExample", NULL, NULL);
-	assert(window != nullptr);
+	if (window == NULL) {
+		printf("GLFW failed to create window");
+		return 1;
+	}
 	glfwMakeContextCurrent(window);
-	assert(glewInit() == GLEW_OK);
+
+	if (!gladLoadGL(glfwGetProcAddress)) {
+		printf("GLAD Failed to load GL headers");
+		return 1;
+	}
 
 	unsigned int shader = createShaderProgram(vertexShaderSource, fragmentShaderSource);
 	unsigned int vaoA = createVAO(vertices,3);
+	int width, height, numComponents;
 
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
