@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <math.h>
 
-#define GLAD_GL_IMPLEMENTATION
 #include <ew/external/glad.h>
 
 #include <GLFW/glfw3.h>
