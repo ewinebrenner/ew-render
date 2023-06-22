@@ -173,9 +173,12 @@ int main() {
 	ew::Vec3 a{ 1.0f, 0.5f, 0.2f };
 	ew::Vec3 b{ 0.0f, 1.0f, 0.0f };
 	ew::Vec3 c = a * 5.0f;
-	ew::Vec4 d = ew::Vec4(c, 1.0f);
-	c = ew::Normalize(c);
-	float magC = ew::Magnitude(c);
+	ew::Vec4 d = ew::Vec4(1.0f,1.0f,1.0f,1.0f);
+
+	ew::Vec3 pos = ew::Vec3(5.0f, 5.0f, 5.0f);
+
+	ew::Mat4 m = ew::Translate(pos.x, pos.y, pos.z);
+	d = m * d;
 
 	printf("C: %f,%f,%f\n", c.x, c.y, c.z);
 	printf("D: %f,%f,%f,%f\n", d.x, d.y, d.z, d.w);
