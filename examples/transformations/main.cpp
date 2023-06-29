@@ -16,24 +16,78 @@
 #include "ewMath/ewMath.h"
 
 const int SCREEN_WIDTH = 1080;
-const int SCREEN_HEIGHT = 720;
+const int SCREEN_HEIGHT = 1080;
 
 struct Vertex {
 	ew::Vec3 pos;
+	ew::Vec3 normal;
 	float u, v;
 };
 
-Vertex vertices[4] = {
-	//x   //y  //z   //u  //v
-	{ ew::Vec3(-0.5,-0.5, 0.0), 0.0, 0.0}, //Bottom left
-	{ ew::Vec3(0.5, -0.5, 0.0), 1.0, 0.0}, //Bottom right
-	{ ew::Vec3(0.5,  0.5, 0.0), 1.0, 1.0},  //Top right
-	{ ew::Vec3(-0.5, 0.5, 0.0), 0.0, 1.0}  //Top left
+struct Mesh {
+	Vertex* vertices;
+	unsigned int numVertices;
+	unsigned int* indices;
+	unsigned int numIndices;
 };
 
-unsigned int indices[6] = {
-	0, 1, 2, 2, 3, 0
-};
+void createCubeFace(ew::Vec3 normal, float size, Mesh* mesh) {
+	unsigned int startVertex = mesh->numVertices;
+	ew::Vec3 a = ew::Vec3(normal.z, normal.x, normal.y); //U axis
+	ew::Vec3 b = ew::Cross(normal, a); //V axis
+	for (int i = 0; i < 4; i++)
+	{
+		int col = i % 2;
+		int row = i / 2;
+
+		ew::Vec3 pos = normal * size * 0.5f;
+		//ew::Vec3 pos = ew::Vec3(0);
+		pos -= (a + b) * size * 0.5f;
+		pos +=(a * col + b * row) * size;
+		Vertex* vertex = &mesh->vertices[mesh->numVertices];
+		vertex->pos = pos;
+		vertex->u = col;
+		vertex->v = row;
+		vertex->normal = normal;
+		mesh->numVertices++;
+	}
+
+	//Indices
+	mesh->indices[mesh->numIndices++] = startVertex;
+	mesh->indices[mesh->numIndices++] = startVertex + 1;
+	mesh->indices[mesh->numIndices++] = startVertex + 3;
+	mesh->indices[mesh->numIndices++] = startVertex + 3;
+	mesh->indices[mesh->numIndices++] = startVertex + 2;
+	mesh->indices[mesh->numIndices++] = startVertex;
+}
+
+Mesh* createCubeMesh(float size) {
+	float halfSize = size;
+	Mesh* mesh = (Mesh*)malloc(sizeof(Mesh));
+	if (mesh == NULL)
+		return NULL;
+	mesh->vertices = (Vertex*)malloc(sizeof(Vertex) * 24);
+	if (mesh->vertices == NULL) {
+		free(mesh);
+		return NULL;
+	}
+	mesh->indices = (unsigned int*)malloc(sizeof(unsigned int) * 36);
+	if (mesh->indices == NULL) {
+		free(mesh);
+		free(mesh->vertices);
+		return NULL;
+	}
+
+	mesh->numVertices = 0;
+	mesh->numIndices = 0;
+	createCubeFace(ew::Vec3{ 0.0f,0.0f,1.0f }, size, mesh); //Front
+	createCubeFace(ew::Vec3{ 1.0f,0.0f,0.0f }, size, mesh); //Right
+	createCubeFace(ew::Vec3{ 0.0f,1.0f,0.0f }, size, mesh); //Top
+	createCubeFace(ew::Vec3{ -1.0f,0.0f,0.0f }, size, mesh); //Left
+	createCubeFace(ew::Vec3{ 0.0f,-1.0f,0.0f }, size, mesh); //Bottom
+	createCubeFace(ew::Vec3{ 0.0f,0.0f,-1.0f }, size, mesh); //Back
+	return mesh;
+}
 
 std::string loadShaderSourceFromFile(const char* filePath) {
 	std::ifstream fstream(filePath);
@@ -108,9 +162,13 @@ unsigned int createVAO(Vertex* vertexData, int numVertices, unsigned int* indice
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (const void*)offsetof(Vertex,pos));
 	glEnableVertexAttribArray(0);
 
-	//UV attribute
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (const void*)(offsetof(Vertex, u)));
+	//Normal attribute
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (const void*)offsetof(Vertex, normal));
 	glEnableVertexAttribArray(1);
+
+	//UV attribute
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (const void*)(offsetof(Vertex, u)));
+	glEnableVertexAttribArray(2);
 
 	return vao;
 }
@@ -167,23 +225,26 @@ struct TextureSettings {
 };
 TextureSettings textureSettings;
 
+void debugLog(const char* label, const ew::Vec4& v) {
+	printf(label);
+	printf(": [%.2f,%.2f,%.2f,%.2f]\n", v.x, v.y, v.z, v.w);
+}
+void debugLog(const char* label, const ew::Vec3& v){
+	printf(label);
+	printf(": [%.2f,%.2f,%.2f]\n", v.x, v.y, v.z);
+}
+void debugLog(const char* label, const ew::Mat4& m) {
+	printf("%s\n", label);
+	printf("|%.2f,%.2f,%.2f,%.2f|\n", m.m00, m.m10, m.m20, m.m30);
+	printf("|%.2f,%.2f,%.2f,%.2f|\n", m.m01, m.m11, m.m21, m.m31);
+	printf("|%.2f,%.2f,%.2f,%.2f|\n", m.m02, m.m12, m.m22, m.m32);
+	printf("|%.2f,%.2f,%.2f,%.2f|\n", m.m03, m.m13, m.m23, m.m33);
+}
+
+ew::Vec3 rotation = ew::Vec3(0.0f, 0.0f, 0.0f); //Degrees
+Mesh* cubeMesh;
+
 int main() {
-	printf("Math tests...\n");
-
-	ew::Vec3 a{ 1.0f, 0.5f, 0.2f };
-	ew::Vec3 b{ 0.0f, 1.0f, 0.0f };
-	ew::Vec3 c = a * 5.0f;
-	ew::Vec4 d = ew::Vec4(1.0f,1.0f,1.0f,1.0f);
-
-	ew::Vec3 pos = ew::Vec3(5.0f, 5.0f, 5.0f);
-
-	ew::Mat4 m = ew::Translate(pos.x, pos.y, pos.z);
-	d = m * d;
-
-	printf("C: %f,%f,%f\n", c.x, c.y, c.z);
-	printf("D: %f,%f,%f,%f\n", d.x, d.y, d.z, d.w);
-
-
 	printf("Initializing...");
 	if (!glfwInit()) {
 		printf("GLFW failed to init!");
@@ -207,10 +268,15 @@ int main() {
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
 	ImGui_ImplOpenGL3_Init();
 
+	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LESS);
+
+	Mesh* cubeMesh = createCubeMesh(0.25f);
+
 	std::string vertexShaderSource = loadShaderSourceFromFile("assets/unlit.vert");
 	std::string fragmentShaderSource = loadShaderSourceFromFile("assets/unlit.frag");
 	unsigned int shader = createShaderProgram(vertexShaderSource.c_str(), fragmentShaderSource.c_str());
-	unsigned int vaoA = createVAO(vertices, 4, indices, 6);
+	unsigned int vaoA = createVAO(cubeMesh->vertices, cubeMesh->numVertices, cubeMesh->indices, cubeMesh->numIndices);
 	unsigned int texture = loadTexture("assets/bricks_color.jpg",GL_REPEAT,GL_LINEAR);
 
 	//Set static uniforms
@@ -220,11 +286,12 @@ int main() {
 	glUniform1i(textureLocation, 0);
 	int timeLocation = glGetUniformLocation(shader, "uTime");
 	int scaleLocation = glGetUniformLocation(shader, "uScale");
+	int modelTransformLocation = glGetUniformLocation(shader, "uModel");
 
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
 		glClearColor(0.3f, 0.4f, 0.9f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glUseProgram(shader);
 
 		glBindVertexArray(vaoA);
@@ -234,8 +301,21 @@ int main() {
 		//Set the value of the variable at the location
 		glUniform1f(timeLocation, time);
 
+	//	ew::Mat4 translation = ew::Translation(5.0f, 6.0f, 7.0f);
+		ew::Mat4 scale = ew::Scale(1.0f, 1.0f, 1.0f);
+
+		ew::Mat4 rotateX = ew::RotateX(ew::Radians(rotation.x));
+		ew::Mat4 rotateY = ew::RotateY(ew::Radians(rotation.y));
+		ew::Mat4 rotateZ = ew::RotateZ(ew::Radians(rotation.z));
+
+		ew::Mat4 model = ew::Mat4Multiply(rotateZ, scale);
+		model = ew::Mat4Multiply(rotateX, model);
+		model = ew::Mat4Multiply(rotateY, model);
+
+		glUniformMatrix4fv(modelTransformLocation, 1, GL_FALSE, &model.m00);
+
 		//Draw using elements
-		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL);
+		glDrawElements(GL_TRIANGLES, cubeMesh->numIndices, GL_UNSIGNED_INT, NULL);
 
 		//Render UI
 		{
@@ -244,23 +324,7 @@ int main() {
 			ImGui::NewFrame();
 
 			ImGui::Begin("Settings");
-			if (ImGui::Combo("Wrap Mode", &textureSettings.wrapIndex, textureSettings.wrapModes, IM_ARRAYSIZE(textureSettings.wrapModes))) {
-				//glBindTexture(GL_TEXTURE_2D, texture);
-				GLint wrapEnum = textureSettings.wrapModeEnums[textureSettings.wrapIndex];
-				glTextureParameteri(texture, GL_TEXTURE_WRAP_S, wrapEnum);
-				glTextureParameteri(texture, GL_TEXTURE_WRAP_T, wrapEnum);
-			}
-			if (ImGui::Combo("Filter Mode", &textureSettings.filterIndex, textureSettings.filterModes, IM_ARRAYSIZE(textureSettings.filterModes))) {
-				GLint filterEnum = textureSettings.filterModeEnums[textureSettings.filterIndex];
-				glTextureParameteri(texture, GL_TEXTURE_MIN_FILTER, filterEnum);
-				glTextureParameteri(texture, GL_TEXTURE_MAG_FILTER, filterEnum);
-			}
-			if (ImGui::DragFloat("Scale", &textureSettings.scale, 0.1f)) {
-				glUniform1f(scaleLocation, textureSettings.scale);
-			}
-			if (ImGui::ColorEdit3("Border Color", textureSettings.borderColor)) {
-				glTextureParameterfv(texture, GL_TEXTURE_BORDER_COLOR, textureSettings.borderColor);
-			}
+			ImGui::DragFloat3("Rotation", &rotation.x);
 			ImGui::End();
 
 			ImGui::Render();
