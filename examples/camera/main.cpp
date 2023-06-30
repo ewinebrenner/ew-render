@@ -13,10 +13,10 @@
 #include <imgui_impl_opengl3.h>
 
 #include <ew/ew.h>
-#include <ew/transformations.h>
 #include <ew/procGen.h>
+#include <ew/transformations.h>
 
-const int SCREEN_WIDTH = 1080;
+const int SCREEN_WIDTH = 1920;
 const int SCREEN_HEIGHT = 1080;
 
 struct Transform {
@@ -36,7 +36,6 @@ ew::Mat4 getModelMatrix(const Transform& transform) {
 }
 
 int main() {
-
 	printf("Initializing...");
 	if (!glfwInit()) {
 		printf("GLFW failed to init!");
@@ -60,7 +59,6 @@ int main() {
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
 	ImGui_ImplOpenGL3_Init();
 
-
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
 
@@ -69,7 +67,7 @@ int main() {
 	std::string vertexShaderSource = ew::loadShaderSourceFromFile("assets/unlit.vert");
 	std::string fragmentShaderSource = ew::loadShaderSourceFromFile("assets/unlit.frag");
 	unsigned int shader = ew::createShaderProgram(vertexShaderSource.c_str(), fragmentShaderSource.c_str());
-	unsigned int vaoA = createVAO(cubeMesh->vertices, cubeMesh->numVertices, cubeMesh->indices, cubeMesh->numIndices);
+	unsigned int vaoA = ew::createVAO(cubeMesh->vertices, cubeMesh->numVertices, cubeMesh->indices, cubeMesh->numIndices);
 	unsigned int texture = ew::loadTexture("assets/bricks_color.jpg",GL_REPEAT,GL_LINEAR);
 
 	//Set static uniforms
