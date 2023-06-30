@@ -233,18 +233,17 @@ void debugLog(const char* label, const ew::Vec3& v){
 	printf(label);
 	printf(": [%.2f,%.2f,%.2f]\n", v.x, v.y, v.z);
 }
-void debugLog(const char* label, const ew::Mat4& m) {
-	printf("%s\n", label);
-	printf("|%.2f,%.2f,%.2f,%.2f|\n", m.m00, m.m10, m.m20, m.m30);
-	printf("|%.2f,%.2f,%.2f,%.2f|\n", m.m01, m.m11, m.m21, m.m31);
-	printf("|%.2f,%.2f,%.2f,%.2f|\n", m.m02, m.m12, m.m22, m.m32);
-	printf("|%.2f,%.2f,%.2f,%.2f|\n", m.m03, m.m13, m.m23, m.m33);
-}
 
-ew::Vec3 rotation = ew::Vec3(0.0f, 0.0f, 0.0f); //Degrees
+struct Transform {
+	ew::Vec3 position = ew::Vec3(0.0f, 0.0f, 0.0f);
+	ew::Vec3 rotation = ew::Vec3(0.0f, 0.0f, 0.0f); //Degrees
+	ew::Vec3 scale = ew::Vec3(1.0f, 1.0f, 1.0f);
+};
+Transform cubeTransform;
 Mesh* cubeMesh;
 
 int main() {
+
 	printf("Initializing...");
 	if (!glfwInit()) {
 		printf("GLFW failed to init!");
@@ -301,18 +300,15 @@ int main() {
 		//Set the value of the variable at the location
 		glUniform1f(timeLocation, time);
 
-	//	ew::Mat4 translation = ew::Translation(5.0f, 6.0f, 7.0f);
-		ew::Mat4 scale = ew::Scale(1.0f, 1.0f, 1.0f);
+		//Construct model matrix
+		ew::Mat4 model =
+			 ew::TranslationMatrix(cubeTransform.position.x, cubeTransform.position.y, cubeTransform.position.z)
+			* ew::RotateYMatrix(ew::Radians(cubeTransform.rotation.y))
+			* ew::RotateXMatrix(ew::Radians(cubeTransform.rotation.x))
+			* ew::RotateZMatrix(ew::Radians(cubeTransform.rotation.z))
+			* ew::ScaleMatrix(cubeTransform.scale.x, cubeTransform.scale.y, cubeTransform.scale.z);
 
-		ew::Mat4 rotateX = ew::RotateX(ew::Radians(rotation.x));
-		ew::Mat4 rotateY = ew::RotateY(ew::Radians(rotation.y));
-		ew::Mat4 rotateZ = ew::RotateZ(ew::Radians(rotation.z));
-
-		ew::Mat4 model = ew::Mat4Multiply(rotateZ, scale);
-		model = ew::Mat4Multiply(rotateX, model);
-		model = ew::Mat4Multiply(rotateY, model);
-
-		glUniformMatrix4fv(modelTransformLocation, 1, GL_FALSE, &model.m00);
+		glUniformMatrix4fv(modelTransformLocation, 1, GL_FALSE, &model[0][0]);
 
 		//Draw using elements
 		glDrawElements(GL_TRIANGLES, cubeMesh->numIndices, GL_UNSIGNED_INT, NULL);
@@ -324,7 +320,14 @@ int main() {
 			ImGui::NewFrame();
 
 			ImGui::Begin("Settings");
-			ImGui::DragFloat3("Rotation", &rotation.x);
+			ImGui::DragFloat3("Position", &cubeTransform.position.x, 0.1f);
+			ImGui::DragFloat3("Rotation", &cubeTransform.rotation.x, 1.0f);
+			ImGui::DragFloat3("Scale", &cubeTransform.scale.x, 0.1f);
+			if (ImGui::Button("Reset")) {
+				cubeTransform.position = ew::Vec3(0.0f);
+				cubeTransform.rotation = ew::Vec3(0.0f);
+				cubeTransform.scale = ew::Vec3(1.0f);
+			}
 			ImGui::End();
 
 			ImGui::Render();

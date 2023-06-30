@@ -22,24 +22,16 @@ namespace ew {
 		friend Vec4 operator*(Vec4 lhs, float rhs);
 		friend Vec4 operator/(Vec4 lhs, float rhs);
 
-		float& operator[](std::size_t idx);
+		float& operator[](int i);
+		const float& operator[](int i)const;
 	};
-	inline float& ew::Vec4::operator[](std::size_t idx)
+	inline float& ew::Vec4::operator[](int i)
 	{
-		assert(idx >= 0 && idx <= 3);
-
-		switch (idx) {
-		case 0:
-			return x;
-		case 1:
-			return y;
-		case 2:
-			return z;
-		case 3:
-			return w;
-		default:
-			return w;
-		}
+		return ((&x)[i]);
+	}
+	inline const float& Vec4::operator[](int i) const
+	{
+		return ((&x)[i]);
 	}
 	//Operator overloads
 	inline Vec4& Vec4::operator+=(const Vec4& rhs) {
