@@ -13,7 +13,8 @@
 #include <imgui_impl_opengl3.h>
 
 #include <ew/external/stb_image.h>
-#include "ewMath/ewMath.h"
+#include <ew/ewMath/ewMath.h>
+#include <ew/texture.h>
 
 const int SCREEN_WIDTH = 1080;
 const int SCREEN_HEIGHT = 1080;
@@ -21,7 +22,7 @@ const int SCREEN_HEIGHT = 1080;
 struct Vertex {
 	ew::Vec3 pos;
 	ew::Vec3 normal;
-	float u, v;
+	ew::Vec2 uv;
 };
 
 struct Mesh {
@@ -46,8 +47,7 @@ void createCubeFace(ew::Vec3 normal, float size, Mesh* mesh) {
 		pos +=(a * col + b * row) * size;
 		Vertex* vertex = &mesh->vertices[mesh->numVertices];
 		vertex->pos = pos;
-		vertex->u = col;
-		vertex->v = row;
+		vertex->uv = ew::Vec2(col,row);
 		vertex->normal = normal;
 		mesh->numVertices++;
 	}
@@ -167,71 +167,10 @@ unsigned int createVAO(Vertex* vertexData, int numVertices, unsigned int* indice
 	glEnableVertexAttribArray(1);
 
 	//UV attribute
-	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (const void*)(offsetof(Vertex, u)));
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (const void*)(offsetof(Vertex, uv)));
 	glEnableVertexAttribArray(2);
 
 	return vao;
-}
-
-int getTextureFormat(int numComponents) {
-	switch (numComponents) {
-	default:
-		return GL_RGBA;
-	case 3:
-		return GL_RGB;
-	case 2:
-		return GL_RG;
-	}
-}
-unsigned int loadTexture(const char* filePath, int wrapMode, int filterMode) {
-	int width, height, numComponents;
-	unsigned char* data = stbi_load(filePath, &width, &height, &numComponents, 0);
-	if (data == NULL) {
-		printf("Failed to load image %s",filePath);
-		stbi_image_free(data);
-		return 0;
-	}
-	unsigned int texture;
-	glGenTextures(1, &texture);
-	glBindTexture(GL_TEXTURE_2D, texture);
-	int format = getTextureFormat(numComponents);
-	glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrapMode);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrapMode);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filterMode);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filterMode);
-
-	float borderColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
-	glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
-
-	glGenerateMipmap(GL_TEXTURE_2D);
-
-	glBindTexture(GL_TEXTURE_2D, NULL);
-	stbi_image_free(data);
-	return texture;
-}
-
-struct TextureSettings {
-	const char* wrapModes[4] = { "Repeat","Clamp to Edge", "Clamp to Border", "Mirrored Repeat"};
-	const int wrapModeEnums[4] = { GL_REPEAT, GL_CLAMP_TO_EDGE, GL_CLAMP_TO_BORDER, GL_MIRRORED_REPEAT };
-
-	const char* filterModes[3] = { "Nearest","Linear","Mipmap Linear"};
-	const int filterModeEnums[3] = {GL_NEAREST, GL_LINEAR, GL_LINEAR_MIPMAP_LINEAR};
-
-	int wrapIndex = 0;
-	int filterIndex = 0;
-	float scale = 1.0f;
-	float borderColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
-};
-TextureSettings textureSettings;
-
-void debugLog(const char* label, const ew::Vec4& v) {
-	printf(label);
-	printf(": [%.2f,%.2f,%.2f,%.2f]\n", v.x, v.y, v.z, v.w);
-}
-void debugLog(const char* label, const ew::Vec3& v){
-	printf(label);
-	printf(": [%.2f,%.2f,%.2f]\n", v.x, v.y, v.z);
 }
 
 struct Transform {
@@ -241,6 +180,14 @@ struct Transform {
 };
 Transform cubeTransform;
 Mesh* cubeMesh;
+
+ew::Mat4 getModelMatrix(const Transform& transform) {
+	return ew::TranslationMatrix(transform.position.x, transform.position.y, transform.position.z)
+		* ew::RotateYMatrix(ew::Radians(transform.rotation.y))
+		* ew::RotateXMatrix(ew::Radians(transform.rotation.x))
+		* ew::RotateZMatrix(ew::Radians(transform.rotation.z))
+		* ew::ScaleMatrix(transform.scale.x, transform.scale.y, transform.scale.z);
+}
 
 int main() {
 
@@ -267,16 +214,17 @@ int main() {
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
 	ImGui_ImplOpenGL3_Init();
 
+
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
 
-	Mesh* cubeMesh = createCubeMesh(0.25f);
+	Mesh* cubeMesh = createCubeMesh(0.5f);
 
 	std::string vertexShaderSource = loadShaderSourceFromFile("assets/unlit.vert");
 	std::string fragmentShaderSource = loadShaderSourceFromFile("assets/unlit.frag");
 	unsigned int shader = createShaderProgram(vertexShaderSource.c_str(), fragmentShaderSource.c_str());
 	unsigned int vaoA = createVAO(cubeMesh->vertices, cubeMesh->numVertices, cubeMesh->indices, cubeMesh->numIndices);
-	unsigned int texture = loadTexture("assets/bricks_color.jpg",GL_REPEAT,GL_LINEAR);
+	unsigned int texture = ew::loadTexture("assets/bricks_color.jpg",GL_REPEAT,GL_LINEAR);
 
 	//Set static uniforms
 	glActiveTexture(GL_TEXTURE0);
@@ -301,13 +249,8 @@ int main() {
 		glUniform1f(timeLocation, time);
 
 		//Construct model matrix
-		ew::Mat4 model =
-			 ew::TranslationMatrix(cubeTransform.position.x, cubeTransform.position.y, cubeTransform.position.z)
-			* ew::RotateYMatrix(ew::Radians(cubeTransform.rotation.y))
-			* ew::RotateXMatrix(ew::Radians(cubeTransform.rotation.x))
-			* ew::RotateZMatrix(ew::Radians(cubeTransform.rotation.z))
-			* ew::ScaleMatrix(cubeTransform.scale.x, cubeTransform.scale.y, cubeTransform.scale.z);
-
+		ew::Mat4 model = getModelMatrix(cubeTransform);
+		
 		glUniformMatrix4fv(modelTransformLocation, 1, GL_FALSE, &model[0][0]);
 
 		//Draw using elements

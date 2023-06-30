@@ -20,6 +20,7 @@ namespace ew {
 		friend Vec3 operator-(Vec3 lhs, const Vec3& rhs);
 		friend Vec3 operator*(Vec3 lhs, float rhs);
 		friend Vec3 operator/(Vec3 lhs, float rhs);
+		friend Vec3 operator-(const Vec3& rhs);
 	};
 
 	//Operator overloads
@@ -73,6 +74,11 @@ namespace ew {
 	{
 		lhs /= rhs;
 		return lhs;
+	}
+
+	Vec3 operator-(const Vec3& rhs)
+	{
+		return rhs * -1.0f;
 	}
 
 	//Utility functions

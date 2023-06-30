@@ -21,6 +21,7 @@ namespace ew {
 		friend Vec4 operator-(Vec4 lhs, const Vec4& rhs);
 		friend Vec4 operator*(Vec4 lhs, float rhs);
 		friend Vec4 operator/(Vec4 lhs, float rhs);
+		friend Vec4 operator-(const Vec4& rhs);
 
 		float& operator[](int i);
 		const float& operator[](int i)const;
@@ -84,6 +85,11 @@ namespace ew {
 	{
 		lhs /= rhs;
 		return lhs;
+	}
+
+	inline Vec4 operator-(const Vec4& rhs)
+	{
+		return rhs * -1.0f;
 	}
 
 	//Utility functions
