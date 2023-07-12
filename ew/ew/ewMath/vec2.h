@@ -72,7 +72,7 @@ namespace ew {
 		return lhs;
 	}
 
-	Vec2 operator-(const Vec2& rhs)
+	inline Vec2 operator-(const Vec2& rhs)
 	{
 		return rhs * -1.0f;
 	}

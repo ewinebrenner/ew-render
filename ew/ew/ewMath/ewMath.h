@@ -7,7 +7,7 @@ namespace ew {
 	constexpr float PI = (3.14159265359f);
 	constexpr float DEG2RAD = (PI / 180.0f);
 	constexpr float RAD2DEG = (180.0f / PI);
-	float Radians(float degrees) {
+	inline float Radians(float degrees) {
 		return degrees * DEG2RAD;
 	}
 }

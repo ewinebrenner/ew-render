@@ -76,7 +76,7 @@ namespace ew {
 		return lhs;
 	}
 
-	Vec3 operator-(const Vec3& rhs)
+	inline Vec3 operator-(const Vec3& rhs)
 	{
 		return rhs * -1.0f;
 	}
