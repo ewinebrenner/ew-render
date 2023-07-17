@@ -24,9 +24,9 @@ struct Vertex {
 
 Vertex vertices[4] = {
 	//x   //y  //z   //u  //v
-	{-0.5, -0.5, 0.0, 0.0, 0.0}, //Bottom left
-	{ 0.5, -0.5, 0.0, 1.0, 0.0}, //Bottom right
-	{ 0.5,  0.5, 0.0, 1.0, 1.0},  //Top right
+	{ -0.5, -0.5, 0.0, 0.0, 0.0}, //Bottom left
+	{  0.5, -0.5, 0.0, 1.0, 0.0}, //Bottom right
+	{  0.5,  0.5, 0.0, 1.0, 1.0},  //Top right
 	{ -0.5,  0.5, 0.0, 0.0, 1.0}  //Top left
 };
 
@@ -34,7 +34,7 @@ unsigned int indices[6] = {
 	0, 1, 2, 2, 3, 0
 };
 
-std::string loadShaderSourceFromFile(const char* filePath) {
+std::string loadShaderSourceFromFile(const std::string& filePath) {
 	std::ifstream fstream(filePath);
 	if (!fstream.is_open()) {
 		printf("Failed to load file %s", filePath);
@@ -122,9 +122,13 @@ int getTextureFormat(int numComponents) {
 		return GL_RGB;
 	case 2:
 		return GL_RG;
+	case 1:
+		return GL_RED;
 	}
 }
+
 unsigned int loadTexture(const char* filePath, int wrapMode, int filterMode) {
+	stbi_set_flip_vertically_on_load(true);
 	int width, height, numComponents;
 	unsigned char* data = stbi_load(filePath, &width, &height, &numComponents, 0);
 	if (data == NULL) {
@@ -147,7 +151,7 @@ unsigned int loadTexture(const char* filePath, int wrapMode, int filterMode) {
 
 	glGenerateMipmap(GL_TEXTURE_2D);
 
-	glBindTexture(GL_TEXTURE_2D, NULL);
+	glBindTexture(GL_TEXTURE_2D, 0);
 	stbi_image_free(data);
 	return texture;
 }
@@ -194,15 +198,31 @@ int main() {
 	std::string fragmentShaderSource = loadShaderSourceFromFile("assets/unlit.frag");
 	unsigned int shader = createShaderProgram(vertexShaderSource.c_str(), fragmentShaderSource.c_str());
 	unsigned int vaoA = createVAO(vertices, 4, indices, 6);
-	unsigned int texture = loadTexture("assets/bricks_color.jpg",GL_REPEAT,GL_LINEAR);
 
-	//Set static uniforms
+	unsigned int textureA = loadTexture("assets/bricks_color.jpg", GL_REPEAT, GL_LINEAR);
+	unsigned int textureB = loadTexture("assets/smiley.png", GL_REPEAT, GL_NEAREST);
+
+	//Place textureA in unit 0
 	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, texture);
-	int textureLocation = glGetUniformLocation(shader, "uTexture");
-	glUniform1i(textureLocation, 0);
+	glBindTexture(GL_TEXTURE_2D, textureA);
+	//Place textureB in unit 1
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, textureB);
+
+	glUseProgram(shader);
+	//Make sampler2D _TextureA sample from unit 0
+	glUniform1i(glGetUniformLocation(shader, "_TextureA"), 0);
+	//Make sampler2D _TextureB sample from unit 1
+	glUniform1i(glGetUniformLocation(shader, "_TextureB"), 1);
+
 	int timeLocation = glGetUniformLocation(shader, "uTime");
 	int scaleLocation = glGetUniformLocation(shader, "uScale");
+
+	//Wireframe
+	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
+	//Shaded
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
@@ -210,12 +230,15 @@ int main() {
 		glClear(GL_COLOR_BUFFER_BIT);
 		glUseProgram(shader);
 
+
 		glBindVertexArray(vaoA);
 		
 		//The current time in seconds this frame
 		float time = (float)glfwGetTime();
 		//Set the value of the variable at the location
 		glUniform1f(timeLocation, time);
+
+		
 
 		//Draw using elements
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL);
@@ -228,21 +251,20 @@ int main() {
 
 			ImGui::Begin("Settings");
 			if (ImGui::Combo("Wrap Mode", &textureSettings.wrapIndex, textureSettings.wrapModes, IM_ARRAYSIZE(textureSettings.wrapModes))) {
-				//glBindTexture(GL_TEXTURE_2D, texture);
 				GLint wrapEnum = textureSettings.wrapModeEnums[textureSettings.wrapIndex];
-				glTextureParameteri(texture, GL_TEXTURE_WRAP_S, wrapEnum);
-				glTextureParameteri(texture, GL_TEXTURE_WRAP_T, wrapEnum);
+				glTextureParameteri(textureA, GL_TEXTURE_WRAP_S, wrapEnum);
+				glTextureParameteri(textureA, GL_TEXTURE_WRAP_T, wrapEnum);
 			}
 			if (ImGui::Combo("Filter Mode", &textureSettings.filterIndex, textureSettings.filterModes, IM_ARRAYSIZE(textureSettings.filterModes))) {
 				GLint filterEnum = textureSettings.filterModeEnums[textureSettings.filterIndex];
-				glTextureParameteri(texture, GL_TEXTURE_MIN_FILTER, filterEnum);
-				glTextureParameteri(texture, GL_TEXTURE_MAG_FILTER, filterEnum);
+				glTextureParameteri(textureA, GL_TEXTURE_MIN_FILTER, filterEnum);
+				glTextureParameteri(textureA, GL_TEXTURE_MAG_FILTER, filterEnum);
 			}
 			if (ImGui::DragFloat("Scale", &textureSettings.scale, 0.1f)) {
 				glUniform1f(scaleLocation, textureSettings.scale);
 			}
 			if (ImGui::ColorEdit3("Border Color", textureSettings.borderColor)) {
-				glTextureParameterfv(texture, GL_TEXTURE_BORDER_COLOR, textureSettings.borderColor);
+				glTextureParameterfv(textureA, GL_TEXTURE_BORDER_COLOR, textureSettings.borderColor);
 			}
 			ImGui::End();
 
