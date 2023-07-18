@@ -8,11 +8,12 @@ out Surface{
 	vec3 Normal;
 }vs_out;
 
-uniform float uTime;
-uniform mat4 uModel;
+uniform mat4 _Model;
+uniform mat4 _View;
+uniform mat4 _Projection;
 
 void main(){
 	vs_out.UV = vUV;
 	vs_out.Normal = vNormal;
-	gl_Position = uModel * vec4(vPos,1.0);
+	gl_Position = _Projection * _View * _Model * vec4(vPos,1.0);
 }
