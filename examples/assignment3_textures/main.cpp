@@ -17,6 +17,9 @@
 const int SCREEN_WIDTH = 1080;
 const int SCREEN_HEIGHT = 720;
 
+struct Color {
+	float r, g, b, a;
+};
 struct Vertex {
 	float x, y, z;
 	float u, v;
@@ -144,7 +147,7 @@ unsigned int loadTexture(const char* filePath, int wrapMode, int filterMode) {
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrapMode);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrapMode);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filterMode);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filterMode);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filterMode);
 
 	float borderColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
 	glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
@@ -170,6 +173,14 @@ struct TextureSettings {
 };
 TextureSettings textureSettings;
 
+struct BackgroundSettings {
+	float distortionStrength = 0.1f;
+	float distortionSpeed = 0.2f;
+	Color glowColor = { 0.1f,0.3f,0.8f, 1.0f };
+}bgSettings;
+
+Color characterColor = { 1.0f, 1.0f, 1.0f, 1.0f };
+
 int main() {
 	printf("Initializing...");
 	if (!glfwInit()) {
@@ -194,53 +205,64 @@ int main() {
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
 	ImGui_ImplOpenGL3_Init();
 
-	std::string vertexShaderSource = loadShaderSourceFromFile("assets/unlit.vert");
-	std::string fragmentShaderSource = loadShaderSourceFromFile("assets/unlit.frag");
-	unsigned int shader = createShaderProgram(vertexShaderSource.c_str(), fragmentShaderSource.c_str());
+	unsigned int backgroundShader = createShaderProgram(
+		loadShaderSourceFromFile("assets/background.vert").c_str(), 
+		loadShaderSourceFromFile("assets/background.frag").c_str());
+
+	unsigned int characterShader = createShaderProgram(
+		loadShaderSourceFromFile("assets/character.vert").c_str(), 
+		loadShaderSourceFromFile("assets/character.frag").c_str());
+
 	unsigned int vaoA = createVAO(vertices, 4, indices, 6);
 
 	unsigned int textureA = loadTexture("assets/bricks_color.jpg", GL_REPEAT, GL_LINEAR);
-	unsigned int textureB = loadTexture("assets/smiley.png", GL_REPEAT, GL_NEAREST);
-
-	//Place textureA in unit 0
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, textureA);
-	//Place textureB in unit 1
-	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, textureB);
-
-	glUseProgram(shader);
-	//Make sampler2D _TextureA sample from unit 0
-	glUniform1i(glGetUniformLocation(shader, "_TextureA"), 0);
-	//Make sampler2D _TextureB sample from unit 1
-	glUniform1i(glGetUniformLocation(shader, "_TextureB"), 1);
-
-	int timeLocation = glGetUniformLocation(shader, "uTime");
-	int scaleLocation = glGetUniformLocation(shader, "uScale");
-
-	//Wireframe
-	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	unsigned int textureB = loadTexture("assets/smiley.png", GL_REPEAT, GL_LINEAR);
+	unsigned int characterTexture = loadTexture("assets/character.png", GL_REPEAT, GL_NEAREST);
+	unsigned int noiseTexture = loadTexture("assets/perlinNoise.png", GL_REPEAT, GL_LINEAR);
 
 	//Shaded
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+	//Enable blending for character transparency
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
 		glClearColor(0.3f, 0.4f, 0.9f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
-		glUseProgram(shader);
-
 
 		glBindVertexArray(vaoA);
-		
+
+		glUseProgram(backgroundShader);
+
 		//The current time in seconds this frame
 		float time = (float)glfwGetTime();
-		//Set the value of the variable at the location
-		glUniform1f(timeLocation, time);
-
 		
+		//Draw background
+		glUseProgram(backgroundShader);
+		glUniform1f(glGetUniformLocation(backgroundShader, "_Time"), time);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, textureA);
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, textureB);
+		glActiveTexture(GL_TEXTURE2);
+		glBindTexture(GL_TEXTURE_2D, noiseTexture);
+		glUniform1i(glGetUniformLocation(backgroundShader, "_TextureA"), 0);
+		glUniform1i(glGetUniformLocation(backgroundShader, "_TextureB"), 1);
+		glUniform1i(glGetUniformLocation(backgroundShader, "_NoiseTexture"), 2);
+		glUniform1f(glGetUniformLocation(backgroundShader, "_DistortionStrength"), bgSettings.distortionStrength);
+		glUniform1f(glGetUniformLocation(backgroundShader, "_DistortionSpeed"), bgSettings.distortionSpeed);
+		glUniform4f(glGetUniformLocation(backgroundShader, "_GlowColor"), bgSettings.glowColor.r, bgSettings.glowColor.g, bgSettings.glowColor.b, bgSettings.glowColor.a);
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL);
 
-		//Draw using elements
+		//Draw character
+		glUseProgram(characterShader);
+		glUniform1f(glGetUniformLocation(characterShader, "_Time"), time);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, characterTexture);
+		glUniform1i(glGetUniformLocation(characterShader, "_Texture"), 0);
+		glUniform4f(glGetUniformLocation(characterShader, "_Color"), characterColor.r, characterColor.g, characterColor.b, characterColor.a);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL);
 
 		//Render UI
@@ -260,12 +282,13 @@ int main() {
 				glTextureParameteri(textureA, GL_TEXTURE_MIN_FILTER, filterEnum);
 				glTextureParameteri(textureA, GL_TEXTURE_MAG_FILTER, filterEnum);
 			}
-			if (ImGui::DragFloat("Scale", &textureSettings.scale, 0.1f)) {
-				glUniform1f(scaleLocation, textureSettings.scale);
-			}
 			if (ImGui::ColorEdit3("Border Color", textureSettings.borderColor)) {
 				glTextureParameterfv(textureA, GL_TEXTURE_BORDER_COLOR, textureSettings.borderColor);
 			}
+			ImGui::SliderFloat("BG Distortion Strength", &bgSettings.distortionStrength, 0.0f, 1.0f);
+			ImGui::SliderFloat("BG Distortion Speed", &bgSettings.distortionSpeed,0.0f,1.0f);
+			ImGui::ColorEdit3("BG Glow Color", &bgSettings.glowColor.r);
+			ImGui::ColorEdit4("Character Color", &characterColor.r);
 			ImGui::End();
 
 			ImGui::Render();
