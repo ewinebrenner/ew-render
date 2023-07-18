@@ -51,31 +51,42 @@ namespace ew {
 		);
 		return m;
 	}
-	inline Mat4 ViewMatrix(Vec3 eyePos, Vec3 centerPos, Vec3 up) {
-		Vec3 forward = Normalize(eyePos - centerPos);
-		Vec3 right = Normalize(Cross(up, forward));
-		up = Normalize(Cross(forward,right));
+	inline Mat4 LookAtMatrix(const Vec3& eyePos, const Vec3& target, const Vec3& up) {
+		Vec3 forward = Normalize(target-eyePos);
+		Vec3 right = Normalize(Cross(forward,up));
+		Vec3 u = Normalize(Cross(right,forward));
 		Mat4 m = IdentityMatrix();
 		m[0][0] = right.x;
 		m[1][0] = right.y;
 		m[2][0] = right.z;
-		m[0][1] = up.x;
-		m[1][1] = up.y;
-		m[2][1] = up.z;
-		m[0][2] = forward.x;
-		m[1][2] = forward.y;
-		m[2][2] = forward.z;
-		m = m * TranslationMatrix(-eyePos.x, -eyePos.y, -eyePos.z);
+		m[0][1] = u.x;
+		m[1][1] = u.y;
+		m[2][1] = u.z;
+		m[0][2] = -forward.x;
+		m[1][2] = -forward.y;
+		m[2][2] = -forward.z;
+		m[3][0] = -Dot(right, eyePos);
+		m[3][1] = -Dot(u, eyePos);
+		m[3][2] = Dot(forward, eyePos);
 		return m;
 	}
+	/// <summary>
+	/// A perspective projection matrix
+	/// </summary>
+	/// <param name="fov">Vertical field of view, in radians</param>
+	/// <param name="aspectRatio">Aspect ratio (width/height)</param>
+	/// <param name="nearPlane">Distance of near clipping plane(always positive)</param>
+	/// <param name="farPlane">Distance of far clipping plane(always positive)</param>
+	/// <returns></returns>
 	inline Mat4 PerspectiveMatrix(float fov, float aspectRatio, float nearPlane, float farPlane) {
 		float c = tanf(fov / 2.0f);
-		Mat4 m = IdentityMatrix();
+		Mat4 m = Mat4(0);
 		m[0][0] = 1.0f / (aspectRatio * c);
 		m[1][1] = 1.0f / c;
-		m[2][2] = -(farPlane + nearPlane) / (farPlane - nearPlane);
-		m[3][2] = -(2 * farPlane * nearPlane) / (farPlane - nearPlane);
+		m[2][2] = (farPlane + nearPlane) / (nearPlane - farPlane);
 		m[2][3] = -1;
+		m[3][2] = (2 * farPlane * nearPlane) / (nearPlane - farPlane);
+		m[3][3] = 0;
 		return m;
 	}
 	inline Mat4 OrthographicMatrix(float height, float aspectRatio, float nearPlane, float farPlane) {

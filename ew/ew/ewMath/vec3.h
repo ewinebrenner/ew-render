@@ -103,7 +103,7 @@ namespace ew {
 	{
 		float mag = Magnitude(v);
 		if (mag == 0)
-			return Vec3(0);
+			return v;
 		return v / mag;
 	}
 }

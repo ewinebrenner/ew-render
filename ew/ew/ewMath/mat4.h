@@ -8,6 +8,13 @@ namespace ew {
 		float n[4][4];
 	public:
 		Mat4() = default;
+		Mat4(float n00)
+		{
+			n[0][0] = n00; n[1][0] = n00; n[2][0] = n00; n[3][0] = n00;
+			n[0][1] = n00; n[1][1] = n00; n[2][1] = n00; n[3][1] = n00;
+			n[0][2] = n00; n[1][2] = n00; n[2][2] = n00; n[3][2] = n00;
+			n[0][3] = n00; n[1][3] = n00; n[2][3] = n00; n[3][3] = n00;
+		};
 		Mat4(float n00, float n10, float n20, float n30,
 			 float n01, float n11, float n21, float n31,
 			 float n02, float n12, float n22, float n32,

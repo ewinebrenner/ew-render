@@ -16,6 +16,10 @@
 #include <ew/procGen.h>
 #include <ew/transformations.h>
 
+void processInput(GLFWwindow* window);
+void onCursorMoved(GLFWwindow* window, double xpos, double ypos);
+void onMouseButtonPressed(GLFWwindow* window, int button, int action, int mods);
+
 const int SCREEN_WIDTH = 1920;
 const int SCREEN_HEIGHT = 1080;
 
@@ -28,17 +32,28 @@ struct Transform {
 struct Camera {
 	float fov = 60.0f;
 	ew::Vec3 position = ew::Vec3(0.0f, 0.0f, 10.0f);
-	ew::Vec3 lookPosition = ew::Vec3(0.0f, 0.0f, 0.0f);
-	float orbitDistance = 10.0f;
-	float orbitSpeed = 1.0f;
+	ew::Vec3 target = ew::Vec3(0.0f, 0.0f, 1.0f);
 	bool orthographic = false;
 	float orthographicHeight = 10.0f;
+	
+};
+struct CameraController {
+	float moveSpeed = 5.0f;
+	float yaw = -90.0f;
+	float pitch = 0.0f;
+	double prevMouseX, prevMouseY;
+	bool firstMouse = true;
+	float mouseSensitivity = 0.1f;
 };
 
 const int NUM_CUBES = 8;
 Transform cubeTransforms[NUM_CUBES];
 ew::Mesh* cubeMesh;
 Camera camera;
+CameraController cameraController;
+
+float prevTime;
+float deltaTime;
 
 ew::Mat4 getModelMatrix(const Transform& transform) {
 	return ew::TranslationMatrix(transform.position.x, transform.position.y, transform.position.z)
@@ -61,7 +76,8 @@ int main() {
 		return 1;
 	}
 	glfwMakeContextCurrent(window);
-
+	glfwSetCursorPosCallback(window, onCursorMoved);
+	glfwSetMouseButtonCallback(window, onMouseButtonPressed);
 	if (!gladLoadGL(glfwGetProcAddress)) {
 		printf("GLAD Failed to load GL headers");
 		return 1;
@@ -74,6 +90,8 @@ int main() {
 
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
+
+	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
 	ew::Mesh* cubeMesh = ew::createCubeMesh(0.5f);
 
@@ -113,6 +131,8 @@ int main() {
 
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
+		processInput(window);
+
 		glClearColor(0.3f, 0.4f, 0.9f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glUseProgram(shader);
@@ -121,15 +141,29 @@ int main() {
 		
 		//The current time in seconds this frame
 		float time = (float)glfwGetTime();
+		deltaTime = time - prevTime;
+		prevTime = time;
 		//Set the value of the variable at the location
 		glUniform1f(timeLocation, time);
-		camera.position = ew::Vec3(cos(time * camera.orbitSpeed) * camera.orbitDistance, 0.0f, sin(time * camera.orbitSpeed) * camera.orbitDistance);
 
-		//Construct model matrix
-		ew::Mat4 view = ew::LookAtMatrix(camera.position, camera.lookPosition, ew::Vec3(0, 1, 0));
-		ew::Mat4 projection = camera.orthographic ? ew::OrthographicMatrix(camera.orthographicHeight, (float)SCREEN_WIDTH / SCREEN_HEIGHT, 0.1f,100.0f) :
-			ew::PerspectiveMatrix(ew::Radians(camera.fov), (float)SCREEN_WIDTH / SCREEN_HEIGHT, 0.1f, 100.0f);
-	
+
+		//Update camera forward vector
+		float yawRad = ew::Radians(cameraController.yaw);
+		float pitchRad = ew::Radians(cameraController.pitch);
+
+		ew::Vec3 forward;
+		forward.x = cosf(yawRad) * cosf(pitchRad);
+		forward.y = sinf(pitchRad);
+		forward.z = sinf(yawRad) * cosf(pitchRad);
+		forward = ew::Normalize(forward);
+
+		camera.target = camera.position + forward;
+
+		//Construct View and Projection
+		ew::Mat4 view = ew::LookAtMatrix(camera.position, camera.target, ew::Vec3(0, 1, 0));
+		ew::Mat4 projection = camera.orthographic ? 
+			ew::OrthographicMatrix(camera.orthographicHeight, (float)SCREEN_WIDTH / SCREEN_HEIGHT, 0.01f,1000.0f) :
+			ew::PerspectiveMatrix(ew::Radians(camera.fov), (float)SCREEN_WIDTH / SCREEN_HEIGHT, 0.01f, 1000.0f);
 		glUniformMatrix4fv(glGetUniformLocation(shader, "_View"), 1, GL_FALSE, &view[0][0]);
 		glUniformMatrix4fv(glGetUniformLocation(shader, "_Projection"), 1, GL_FALSE, &projection[0][0]);
 
@@ -158,8 +192,7 @@ int main() {
 				}
 				
 				ImGui::Checkbox("Orthographic", &camera.orthographic);
-				ImGui::DragFloat("Orbit distance", &camera.orbitDistance, 0.1f);
-				ImGui::DragFloat("Orbit speed", &camera.orbitSpeed, 0.1f);
+				ImGui::DragFloat("Move speed", &cameraController.moveSpeed, 0.1f);
 			}
 			
 			for (size_t i = 0; i < NUM_CUBES; i++)
@@ -187,4 +220,74 @@ int main() {
 		glfwSwapBuffers(window);
 	}
 	printf("Shutting down...");
+}
+
+void processInput(GLFWwindow* window) {
+	if (glfwGetKey(window, GLFW_KEY_ESCAPE)) {
+		glfwSetWindowShouldClose(window, true);
+		return;
+	}
+
+	ew::Vec3 forward = ew::Normalize(camera.target - camera.position);
+	ew::Vec3 right = ew::Normalize(ew::Cross(forward, ew::Vec3(0, 1, 0)));
+	ew::Vec3 up = ew::Normalize(ew::Cross(forward,right));
+	if (glfwGetKey(window,GLFW_KEY_W)) {
+		camera.position += forward * cameraController.moveSpeed * deltaTime;
+	}
+	if (glfwGetKey(window, GLFW_KEY_S)) {
+		camera.position -= forward * cameraController.moveSpeed * deltaTime;
+	}
+	if (glfwGetKey(window, GLFW_KEY_D)) {
+		camera.position += right * cameraController.moveSpeed * deltaTime;
+	}
+	if (glfwGetKey(window, GLFW_KEY_A)) {
+		camera.position -= right * cameraController.moveSpeed * deltaTime;
+	}
+	if (glfwGetKey(window, GLFW_KEY_Q)) {
+		camera.position += up * cameraController.moveSpeed * deltaTime;
+	}
+	if (glfwGetKey(window, GLFW_KEY_E)) {
+		camera.position -= up * cameraController.moveSpeed * deltaTime;
+	}
+
+
+}
+
+void onCursorMoved(GLFWwindow* window, double xpos, double ypos)
+{
+	if (glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_NORMAL)
+		return;
+
+	if (cameraController.firstMouse) {
+		cameraController.prevMouseX = xpos;
+		cameraController.prevMouseY = ypos;
+		cameraController.firstMouse = false;
+	}
+	float deltaX = xpos - cameraController.prevMouseX;
+	float deltaY = ypos - cameraController.prevMouseY;
+	cameraController.yaw += deltaX * cameraController.mouseSensitivity;
+	cameraController.pitch += -deltaY * cameraController.mouseSensitivity;
+	if (cameraController.pitch < -89.9f) {
+		cameraController.pitch = -89.9f;
+	}
+	else if (cameraController.pitch > 89.9f) {
+		cameraController.pitch = 89.9f;
+	}
+
+	cameraController.prevMouseX = xpos;
+	cameraController.prevMouseY = ypos;
+}
+
+void onMouseButtonPressed(GLFWwindow* window, int button, int action, int mods)
+{
+	if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) {
+		if (glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED) {
+			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+			cameraController.firstMouse = true;
+		}
+		else {
+			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+		}
+	}
+	
 }
