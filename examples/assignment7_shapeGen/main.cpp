@@ -58,6 +58,7 @@ const int NUM_CUBES = 8;
 Transform cubeTransform;
 Transform sphereTransform;
 Transform cylinderTransform;
+Transform planeTransform;
 
 Camera camera;
 CameraController cameraController;
@@ -73,6 +74,7 @@ struct Settings {
 
 	int sphereSegments = 16;
 	int cylinderSegments = 16;
+	int planeSegments = 10;
 
 }settings;
 
@@ -121,15 +123,17 @@ int main() {
 
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-	ew::MeshData cubeMeshData, sphereMeshData, cylinderMeshData;
+	ew::MeshData cubeMeshData, sphereMeshData, cylinderMeshData, planeMeshData;
 	ew::createCube(0.5f,&cubeMeshData);
 	ew::createSphere(0.5f, settings.sphereSegments, &sphereMeshData);
 	ew::createCylinder(1.0f, 0.5f, settings.cylinderSegments, &cylinderMeshData);
+	ew::createPlane(1.0f, settings.planeSegments, &planeMeshData);
 
-	ew::Mesh cubeMesh, sphereMesh, cylinderMesh;
+	ew::Mesh cubeMesh, sphereMesh, cylinderMesh, planeMesh;
 	cubeMesh.load(cubeMeshData);
 	sphereMesh.load(sphereMeshData);
 	cylinderMesh.load(cylinderMeshData);
+	planeMesh.load(planeMeshData);
 
 	std::string vertexShaderSource = ew::loadShaderSourceFromFile("assets/unlit.vert");
 	std::string fragmentShaderSource = ew::loadShaderSourceFromFile("assets/unlit.frag");
@@ -137,6 +141,7 @@ int main() {
 
 	sphereTransform.position = ew::Vec3(2.0f, 0.0f, 0.0f);
 	cylinderTransform.position = ew::Vec3(-2.0f, 0.0f, 0.0f);
+	planeTransform.position = ew::Vec3(4.0f, 0.0f, 0.0f);
 
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
@@ -176,6 +181,7 @@ int main() {
 		drawMesh(shader, cubeMesh, cubeTransform, drawMode);
 		drawMesh(shader, sphereMesh, sphereTransform, drawMode);
 		drawMesh(shader, cylinderMesh, cylinderTransform, drawMode);
+		drawMesh(shader, planeMesh, planeTransform, drawMode);
 
 		//Render UI
 		{
@@ -219,6 +225,10 @@ int main() {
 			if (ImGui::DragInt("Cylinder Segments", &settings.cylinderSegments, 1, 3, 512)) {
 				ew::createCylinder(1.0f,0.5f,settings.cylinderSegments, &cylinderMeshData);
 				cylinderMesh.load(cylinderMeshData);
+			}
+			if (ImGui::DragInt("Plane Segments", &settings.planeSegments, 1, 1, 512)) {
+				ew::createPlane(1.0f, settings.planeSegments, &planeMeshData);
+				planeMesh.load(planeMeshData);
 			}
 			
 			ImGui::End();

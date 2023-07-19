@@ -166,4 +166,39 @@ namespace ew {
 			 mesh->indices.push_back(bottomIndex - i + 1);
 		 }
 	 }
+	 void createPlane(float size, int numSegments, MeshData* mesh)
+	 {
+		 mesh->vertices.clear();
+		 mesh->indices.clear();
+		 //VERTICES
+		 for (size_t i = 0; i <= numSegments; i++)
+		 {
+			 for (size_t j = 0; j <= numSegments; j++)
+			 {
+				 float u = (float)i / numSegments;
+				 float v = (float)j / numSegments;
+				 Vertex vertex;
+				 vertex.pos = Vec3(-size/2 + size * u, -size/2 + size * v, 0.0f);
+				 vertex.normal = Vec3(0, 0, 1.0f);
+				 vertex.uv = Vec2(u, v);
+				 mesh->vertices.push_back(vertex);
+			 }
+		 }
+		 //INDICES
+		 int numColumns = numSegments + 1;
+		 for (size_t i = 0; i < numSegments; i++)
+		 {
+			 for (size_t j = 0; j < numSegments; j++)
+			 {
+				 int start = i + j * numColumns;
+				 //Triangle 1
+				 mesh->indices.push_back(start);
+				 mesh->indices.push_back(start + numColumns);
+				 mesh->indices.push_back(start + numColumns + 1);
+				 mesh->indices.push_back(start + numColumns + 1);
+				 mesh->indices.push_back(start + 1);
+				 mesh->indices.push_back(start);
+			 }
+		 }
+	 }
 }
