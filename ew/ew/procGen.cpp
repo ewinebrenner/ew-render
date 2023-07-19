@@ -50,7 +50,7 @@ namespace ew {
 		 mesh->indices.clear();
 		 //VERTICES---------------
 		 //Top center
-		 mesh->vertices.push_back({ Vec3(0.0f,radius,0.0f),Vec3(0,1,0) });
+		 mesh->vertices.push_back({ Vec3(0.0f,radius,0.0f),Vec3(0,1,0),Vec2(0.5,1.0)});
 		 float thetaStep = (2 * PI) / numSegments; //Horizontal angle 
 		 float phiStep = PI / numSegments; //Vertical angle
 		 //Row
@@ -64,13 +64,15 @@ namespace ew {
 				 float x = cos(theta) * sin(phi);
 				 float y = cos(phi);
 				 float z = sin(theta) * sin(phi);
-				 Vec3 pos = Vec3(x, y, z) * radius;
-				 Vec3 normal = Vec3(x, y, z);
-				 mesh->vertices.push_back({ pos,normal });
+				 Vertex vertex;
+				 vertex.pos = Vec3(x, y, z) * radius;
+				 vertex.normal = Vec3(x, y, z);
+				 vertex.uv = Vec2((float)j / numSegments, 1.0 - (float)i / numSegments);
+				 mesh->vertices.push_back(vertex);
 			 }
 		 }
 		 //Bottom
-		 mesh->vertices.push_back({ Vec3(0.0f,-radius,0.0f),Vec3(0,-1,0) });
+		 mesh->vertices.push_back({ Vec3(0.0f,-radius,0.0f),Vec3(0,-1,0),Vec2(0.5,0.0)});
 		 //INDICES-----------------
 		 //Top cap
 		 for (size_t i = 1; i <= numSegments; i++)
@@ -115,6 +117,7 @@ namespace ew {
 			 Vertex vertex;
 			 vertex.pos = Vec3(x * radius, y, z * radius);
 			 vertex.normal = isCap ? Normalize(Vec3(0,y,0)) : Normalize(Vec3(x, 0, z));
+			 vertex.uv = isCap ? Vec2(x * 0.5 + 0.5, z * 0.5 + 0.5) : Vec2((float)i / numSegments, y > 0 ? 1 : 0);
 			 mesh->vertices.push_back(vertex);
 		 }
 	 }
@@ -125,7 +128,7 @@ namespace ew {
 		 float halfHeight = height / 2.0f;
 		 //VERTICES---------------
 		 //Top center
-		 mesh->vertices.push_back({ Vec3(0.0f,halfHeight,0.0f),Vec3(0,1,0)});
+		 mesh->vertices.push_back({ Vec3(0.0f,halfHeight,0.0f),Vec3(0,1,0),Vec2(0.5)});
 		 //Top ring (facing up)
 		 createRingVertices(halfHeight, radius, numSegments, true, mesh);
 		 unsigned int sideStart = mesh->vertices.size() - 1;
@@ -136,7 +139,7 @@ namespace ew {
 		 //Bottom ring (facing down)
 		 createRingVertices(-halfHeight, radius, numSegments, true, mesh);
 		 //Bottom center
-		 mesh->vertices.push_back({ Vec3(0.0f,-halfHeight,0.0f),Vec3(0,-1,0) });
+		 mesh->vertices.push_back({ Vec3(0.0f,-halfHeight,0.0f),Vec3(0,-1,0),Vec2(0.5)});
 		 //INDICES-----------
 		 //Top cap
 		 for (size_t i = 1; i <= numSegments; i++)
