@@ -2,5 +2,6 @@
 #include "mesh.h"
 
 namespace ew {
-	Mesh* createCubeMesh(float size);
+	 void createCube(float size, MeshData* meshData);
+	 void createSphere(float radius, int numSegments, MeshData* meshData);
 }

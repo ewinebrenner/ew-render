@@ -29,6 +29,14 @@ struct Transform {
 	ew::Vec3 scale = ew::Vec3(1.0f, 1.0f, 1.0f);
 };
 
+ew::Mat4 getModelMatrix(const Transform& transform) {
+	return ew::TranslationMatrix(transform.position.x, transform.position.y, transform.position.z)
+		* ew::RotateYMatrix(ew::Radians(transform.rotation.y))
+		* ew::RotateXMatrix(ew::Radians(transform.rotation.x))
+		* ew::RotateZMatrix(ew::Radians(transform.rotation.z))
+		* ew::ScaleMatrix(transform.scale.x, transform.scale.y, transform.scale.z);
+}
+
 struct Camera {
 	float fov = 60.0f;
 	ew::Vec3 position = ew::Vec3(0.0f, 0.0f, 10.0f);
@@ -47,20 +55,21 @@ struct CameraController {
 };
 
 const int NUM_CUBES = 8;
-Transform cubeTransforms[NUM_CUBES];
+Transform cubeTransform;
+Transform sphereTransform;
+
 Camera camera;
 CameraController cameraController;
 
 float prevTime;
 float deltaTime;
 
-ew::Mat4 getModelMatrix(const Transform& transform) {
-	return ew::TranslationMatrix(transform.position.x, transform.position.y, transform.position.z)
-		* ew::RotateYMatrix(ew::Radians(transform.rotation.y))
-		* ew::RotateXMatrix(ew::Radians(transform.rotation.x))
-		* ew::RotateZMatrix(ew::Radians(transform.rotation.z))
-		* ew::ScaleMatrix(transform.scale.x, transform.scale.y, transform.scale.z);
-}
+struct Settings {
+	const char* drawModeNames[2] = { "Triangles", "Points" };
+	int glDrawModes[2] = { GL_TRIANGLES,GL_POINTS };
+	int drawModeIndex = 0;
+	bool wireFrame = false;
+}settings;
 
 int main() {
 	printf("Initializing...");
@@ -89,63 +98,37 @@ int main() {
 
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
+	glPointSize(3);
+	glEnable(GL_CULL_FACE);
+	glCullFace(GL_BACK);
 
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-	ew::MeshData cubeMesh;
+	ew::MeshData cubeMesh, sphereMesh;
 	ew::createCube(0.5f,&cubeMesh);
+	ew::createSphere(0.5f, 16, &sphereMesh);
 
 	std::string vertexShaderSource = ew::loadShaderSourceFromFile("assets/unlit.vert");
 	std::string fragmentShaderSource = ew::loadShaderSourceFromFile("assets/unlit.frag");
 	unsigned int shader = ew::createShaderProgram(vertexShaderSource.c_str(), fragmentShaderSource.c_str());
-	unsigned int vaoA = ew::createVAO(cubeMesh.vertices,cubeMesh.indices);
-	unsigned int texture = ew::loadTexture("assets/bricks_color.jpg",GL_REPEAT,GL_LINEAR);
+	unsigned int cubeVAO = ew::createVAO(cubeMesh.vertices, cubeMesh.indices);
+	unsigned int sphereVAO = ew::createVAO(sphereMesh.vertices, sphereMesh.indices);
 
-	//Set static uniforms
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, texture);
-	int textureLocation = glGetUniformLocation(shader, "uTexture");
-	glUniform1i(textureLocation, 0);
-	int timeLocation = glGetUniformLocation(shader, "uTime");
+	sphereTransform.position = ew::Vec3(2.0f, 0.0f, 0.0f);
 
-	//Randomize cube transforms
-	float cubeFieldRadius = 5.0f;
-	for (size_t i = 0; i < NUM_CUBES; i++)
-	{
-		ew::Vec3 pos = ew::Vec3(
-			ew::RandomRange(-1, 1), 
-			ew::RandomRange(-1, 1), 
-			ew::RandomRange(-1, 1));
-		pos = ew::Normalize(pos) * ew::RandomRange(0, cubeFieldRadius);
-		cubeTransforms[i].position = pos;
-		cubeTransforms[i].rotation = ew::Vec3(
-			ew::RandomRange(0, 360),
-			ew::RandomRange(0, 360),
-			ew::RandomRange(0, 360));
-		cubeTransforms[i].scale = ew::Vec3(
-			ew::RandomRange(0.5, 2),
-			ew::RandomRange(0.5, 2),
-			ew::RandomRange(0.5, 2)
-		);
-	}
 
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
 		processInput(window);
 
-		glClearColor(0.3f, 0.4f, 0.9f, 1.0f);
+		glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glUseProgram(shader);
 
-		glBindVertexArray(vaoA);
-		
 		//The current time in seconds this frame
 		float time = (float)glfwGetTime();
 		deltaTime = time - prevTime;
 		prevTime = time;
-		//Set the value of the variable at the location
-		glUniform1f(timeLocation, time);
-
 
 		//Update camera forward vector
 		float yawRad = ew::Radians(cameraController.yaw);
@@ -167,14 +150,26 @@ int main() {
 		glUniformMatrix4fv(glGetUniformLocation(shader, "_View"), 1, GL_FALSE, &view[0][0]);
 		glUniformMatrix4fv(glGetUniformLocation(shader, "_Projection"), 1, GL_FALSE, &projection[0][0]);
 
-		//Draw using elements
-		for (size_t i = 0; i < NUM_CUBES; i++)
-		{
-			ew::Mat4 model = getModelMatrix(cubeTransforms[i]);
-			glUniformMatrix4fv(glGetUniformLocation(shader, "_Model"), 1, GL_FALSE, &model[0][0]);
-			glDrawElements(GL_TRIANGLES, cubeMesh.indices.size(), GL_UNSIGNED_INT, NULL);
+		int drawMode = settings.glDrawModes[settings.drawModeIndex];
+		//Draw cube
+		glBindVertexArray(cubeVAO);
+		glUniformMatrix4fv(glGetUniformLocation(shader, "_Model"), 1, GL_FALSE, &getModelMatrix(cubeTransform)[0][0]);
+		if (drawMode == GL_TRIANGLES) {
+			glDrawElements(drawMode, cubeMesh.indices.size(), GL_UNSIGNED_INT, NULL);
 		}
-		
+		else {
+			glDrawArrays(drawMode, 0, cubeMesh.vertices.size());
+		}
+
+		//Draw sphere
+		glBindVertexArray(sphereVAO);
+		glUniformMatrix4fv(glGetUniformLocation(shader, "_Model"), 1, GL_FALSE, &getModelMatrix(sphereTransform)[0][0]);
+		if (drawMode == GL_TRIANGLES) {
+			glDrawElements(drawMode, sphereMesh.indices.size(), GL_UNSIGNED_INT, NULL);
+		}
+		else {
+			glDrawArrays(drawMode, 0, sphereMesh.vertices.size());
+		}
 
 		//Render UI
 		{
@@ -183,6 +178,12 @@ int main() {
 			ImGui::NewFrame();
 
 			ImGui::Begin("Settings");
+			if (ImGui::Checkbox("Wireframe", &settings.wireFrame)) {
+				glPolygonMode(GL_FRONT_AND_BACK, settings.wireFrame ? GL_LINE : GL_FILL);
+			}
+
+			ImGui::Combo("Draw mode", &settings.drawModeIndex, settings.drawModeNames, IM_ARRAYSIZE(settings.drawModeNames));
+
 			if (ImGui::CollapsingHeader("Camera")) {
 				if (camera.orthographic) {
 					ImGui::DragFloat("Height", &camera.orthographicHeight, 0.5f);
@@ -195,20 +196,15 @@ int main() {
 				ImGui::DragFloat("Move speed", &cameraController.moveSpeed, 0.1f);
 			}
 			
-			for (size_t i = 0; i < NUM_CUBES; i++)
-			{
-				ImGui::PushID(i);
-				if (ImGui::CollapsingHeader("Transform")) {
-					ImGui::DragFloat3("Position", &cubeTransforms[i].position.x, 0.1f);
-					ImGui::DragFloat3("Rotation", &cubeTransforms[i].rotation.x, 1.0f);
-					ImGui::DragFloat3("Scale", &cubeTransforms[i].scale.x, 0.1f);
-					if (ImGui::Button("Reset")) {
-						cubeTransforms[i].position = ew::Vec3(0.0f);
-						cubeTransforms[i].rotation = ew::Vec3(0.0f);
-						cubeTransforms[i].scale = ew::Vec3(1.0f);
-					}
+			if (ImGui::CollapsingHeader("Cube")) {
+				ImGui::DragFloat3("Position", &cubeTransform.position.x, 0.1f);
+				ImGui::DragFloat3("Rotation", &cubeTransform.rotation.x, 1.0f);
+				ImGui::DragFloat3("Scale", &cubeTransform.scale.x, 0.1f);
+				if (ImGui::Button("Reset")) {
+					cubeTransform.position = ew::Vec3(0.0f);
+					cubeTransform.rotation = ew::Vec3(0.0f);
+					cubeTransform.scale = ew::Vec3(1.0f);
 				}
-				ImGui::PopID();
 			}
 			
 			ImGui::End();

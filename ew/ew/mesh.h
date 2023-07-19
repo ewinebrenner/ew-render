@@ -8,12 +8,15 @@ namespace ew {
 		ew::Vec2 uv;
 	};
 
-	struct Mesh {
-		Vertex* vertices;
-		unsigned int numVertices;
-		unsigned int* indices;
-		unsigned int numIndices;
+	//struct Mesh {
+	//	void load(MeshData& meshData);
+	//	unsigned int m_vao;
+	//};
+
+	struct MeshData {
+		std::vector<Vertex> vertices;
+		std::vector<unsigned int> indices;
 	};
 
-	unsigned int createVAO(Vertex* vertexData, int numVertices, unsigned int* indicesData, int numIndices);
+	unsigned int createVAO(const std::vector<Vertex>& vertices, const std::vector<unsigned int>& indices);
 }

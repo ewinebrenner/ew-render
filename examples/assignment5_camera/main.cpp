@@ -37,7 +37,6 @@ struct Camera {
 
 const int NUM_CUBES = 8;
 Transform cubeTransforms[NUM_CUBES];
-ew::Mesh* cubeMesh;
 Camera camera;
 
 ew::Mat4 getModelMatrix(const Transform& transform) {
@@ -75,12 +74,13 @@ int main() {
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
 
-	ew::Mesh* cubeMesh = ew::createCubeMesh(0.5f);
+	ew::MeshData cubeMesh;
+	ew::createCube(0.5f,&cubeMesh);
 
 	std::string vertexShaderSource = ew::loadShaderSourceFromFile("assets/unlit.vert");
 	std::string fragmentShaderSource = ew::loadShaderSourceFromFile("assets/unlit.frag");
 	unsigned int shader = ew::createShaderProgram(vertexShaderSource.c_str(), fragmentShaderSource.c_str());
-	unsigned int vaoA = ew::createVAO(cubeMesh->vertices, cubeMesh->numVertices, cubeMesh->indices, cubeMesh->numIndices);
+	unsigned int vaoA = ew::createVAO(cubeMesh.vertices,cubeMesh.indices);
 	unsigned int texture = ew::loadTexture("assets/bricks_color.jpg",GL_REPEAT,GL_LINEAR);
 
 	//Set static uniforms
@@ -138,7 +138,7 @@ int main() {
 		{
 			ew::Mat4 model = getModelMatrix(cubeTransforms[i]);
 			glUniformMatrix4fv(glGetUniformLocation(shader, "_Model"), 1, GL_FALSE, &model[0][0]);
-			glDrawElements(GL_TRIANGLES, cubeMesh->numIndices, GL_UNSIGNED_INT, NULL);
+			glDrawElements(GL_TRIANGLES, cubeMesh.indices.size(), GL_UNSIGNED_INT, NULL);
 		}
 		
 
