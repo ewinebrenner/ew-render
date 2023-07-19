@@ -9,11 +9,10 @@ out Surface{
 }vs_out;
 
 uniform mat4 _Model;
-uniform mat4 _View;
-uniform mat4 _Projection;
+uniform mat4 _ViewProjection;
 
 void main(){
 	vs_out.UV = vUV;
 	vs_out.Normal = vNormal;
-	gl_Position = _Projection * _View * _Model * vec4(vPos,1.0);
+	gl_Position = _ViewProjection * _Model * vec4(vPos,1.0);
 }

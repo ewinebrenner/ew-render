@@ -14,7 +14,7 @@
 
 #include <ew/ew.h>
 #include <ew/procGen.h>
-#include <ew/transformations.h>
+#include <ew/ewMath/transformations.h>
 
 void processInput(GLFWwindow* window);
 void onCursorMoved(GLFWwindow* window, double xpos, double ypos);
@@ -22,20 +22,6 @@ void onMouseButtonPressed(GLFWwindow* window, int button, int action, int mods);
 
 const int SCREEN_WIDTH = 1920;
 const int SCREEN_HEIGHT = 1080;
-
-struct Transform {
-	ew::Vec3 position = ew::Vec3(0.0f, 0.0f, 0.0f);
-	ew::Vec3 rotation = ew::Vec3(0.0f, 0.0f, 0.0f); //Degrees
-	ew::Vec3 scale = ew::Vec3(1.0f, 1.0f, 1.0f);
-};
-
-ew::Mat4 getModelMatrix(const Transform& transform) {
-	return ew::TranslationMatrix(transform.position.x, transform.position.y, transform.position.z)
-		* ew::RotateYMatrix(ew::Radians(transform.rotation.y))
-		* ew::RotateXMatrix(ew::Radians(transform.rotation.x))
-		* ew::RotateZMatrix(ew::Radians(transform.rotation.z))
-		* ew::ScaleMatrix(transform.scale.x, transform.scale.y, transform.scale.z);
-}
 
 struct Camera {
 	float fov = 60.0f;
@@ -55,10 +41,10 @@ struct CameraController {
 };
 
 const int NUM_CUBES = 8;
-Transform cubeTransform;
-Transform sphereTransform;
-Transform cylinderTransform;
-Transform planeTransform;
+ew::Transform cubeTransform;
+ew::Transform sphereTransform;
+ew::Transform cylinderTransform;
+ew::Transform planeTransform;
 
 Camera camera;
 CameraController cameraController;
@@ -78,10 +64,9 @@ struct Settings {
 
 }settings;
 
-void drawMesh(unsigned int shader, const ew::Mesh& mesh, const Transform& transform, int drawMode) {
+void drawMesh(const ew::Shader& shader, const ew::Mesh& mesh, const ew::Transform& transform, int drawMode) {
 	mesh.bind();
-
-	glUniformMatrix4fv(glGetUniformLocation(shader, "_Model"), 1, GL_FALSE, &getModelMatrix(transform)[0][0]);
+	shader.setMat4("_Model", transform.getModelMatrix());
 	if (drawMode == GL_TRIANGLES) {
 		glDrawElements(drawMode, mesh.getNumIndices(), GL_UNSIGNED_INT, NULL);
 	}
@@ -135,9 +120,7 @@ int main() {
 	cylinderMesh.load(cylinderMeshData);
 	planeMesh.load(planeMeshData);
 
-	std::string vertexShaderSource = ew::loadShaderSourceFromFile("assets/unlit.vert");
-	std::string fragmentShaderSource = ew::loadShaderSourceFromFile("assets/unlit.frag");
-	unsigned int shader = ew::createShaderProgram(vertexShaderSource.c_str(), fragmentShaderSource.c_str());
+	ew::Shader shader("assets/unlit.vert", "assets/unlit.frag");
 
 	sphereTransform.position = ew::Vec3(2.0f, 0.0f, 0.0f);
 	cylinderTransform.position = ew::Vec3(-2.0f, 0.0f, 0.0f);
@@ -173,9 +156,9 @@ int main() {
 			ew::OrthographicMatrix(camera.orthographicHeight, (float)SCREEN_WIDTH / SCREEN_HEIGHT, 0.01f,1000.0f) :
 			ew::PerspectiveMatrix(ew::Radians(camera.fov), (float)SCREEN_WIDTH / SCREEN_HEIGHT, 0.01f, 1000.0f);
 
-		glUseProgram(shader);
-		glUniformMatrix4fv(glGetUniformLocation(shader, "_View"), 1, GL_FALSE, &view[0][0]);
-		glUniformMatrix4fv(glGetUniformLocation(shader, "_Projection"), 1, GL_FALSE, &projection[0][0]);
+		ew::Mat4 viewProjection = projection * view;
+		shader.use();
+		shader.setMat4("_ViewProjection", viewProjection);
 
 		int drawMode = settings.glDrawModes[settings.drawModeIndex];
 		drawMesh(shader, cubeMesh, cubeTransform, drawMode);
@@ -196,28 +179,6 @@ int main() {
 
 			ImGui::Combo("Draw mode", &settings.drawModeIndex, settings.drawModeNames, IM_ARRAYSIZE(settings.drawModeNames));
 
-			if (ImGui::CollapsingHeader("Camera")) {
-				if (camera.orthographic) {
-					ImGui::DragFloat("Height", &camera.orthographicHeight, 0.5f);
-				}
-				else {
-					ImGui::DragFloat("FOV", &camera.fov, 1.0f, 0.0f, 180.0f);
-				}
-				
-				ImGui::Checkbox("Orthographic", &camera.orthographic);
-				ImGui::DragFloat("Move speed", &cameraController.moveSpeed, 0.1f);
-			}
-			
-			if (ImGui::CollapsingHeader("Cube")) {
-				ImGui::DragFloat3("Position", &cubeTransform.position.x, 0.1f);
-				ImGui::DragFloat3("Rotation", &cubeTransform.rotation.x, 1.0f);
-				ImGui::DragFloat3("Scale", &cubeTransform.scale.x, 0.1f);
-				if (ImGui::Button("Reset")) {
-					cubeTransform.position = ew::Vec3(0.0f);
-					cubeTransform.rotation = ew::Vec3(0.0f);
-					cubeTransform.scale = ew::Vec3(1.0f);
-				}
-			}
 			if (ImGui::DragInt("Sphere Segments", &settings.sphereSegments, 1, 3, 512)) {
 				ew::createSphere(0.5f, settings.sphereSegments, &sphereMeshData);
 				sphereMesh.load(sphereMeshData);
@@ -230,7 +191,17 @@ int main() {
 				ew::createPlane(1.0f, settings.planeSegments, &planeMeshData);
 				planeMesh.load(planeMeshData);
 			}
-			
+			if (ImGui::CollapsingHeader("Camera")) {
+				if (camera.orthographic) {
+					ImGui::DragFloat("Height", &camera.orthographicHeight, 0.5f);
+				}
+				else {
+					ImGui::DragFloat("FOV", &camera.fov, 1.0f, 0.0f, 180.0f);
+				}
+
+				ImGui::Checkbox("Orthographic", &camera.orthographic);
+				ImGui::DragFloat("Move speed", &cameraController.moveSpeed, 0.1f);
+			}
 			ImGui::End();
 
 			ImGui::Render();

@@ -14,16 +14,10 @@
 
 #include <ew/ew.h>
 #include <ew/procGen.h>
-#include <ew/transformations.h>
 
 const int SCREEN_WIDTH = 1920;
 const int SCREEN_HEIGHT = 1080;
 
-struct Transform {
-	ew::Vec3 position = ew::Vec3(0.0f, 0.0f, 0.0f);
-	ew::Vec3 rotation = ew::Vec3(0.0f, 0.0f, 0.0f); //Degrees
-	ew::Vec3 scale = ew::Vec3(1.0f, 1.0f, 1.0f);
-};
 
 struct Camera {
 	float fov = 60.0f;
@@ -36,16 +30,8 @@ struct Camera {
 };
 
 const int NUM_CUBES = 8;
-Transform cubeTransforms[NUM_CUBES];
+ew::Transform cubeTransforms[NUM_CUBES];
 Camera camera;
-
-ew::Mat4 getModelMatrix(const Transform& transform) {
-	return ew::TranslationMatrix(transform.position.x, transform.position.y, transform.position.z)
-		* ew::RotateYMatrix(ew::Radians(transform.rotation.y))
-		* ew::RotateXMatrix(ew::Radians(transform.rotation.x))
-		* ew::RotateZMatrix(ew::Radians(transform.rotation.z))
-		* ew::ScaleMatrix(transform.scale.x, transform.scale.y, transform.scale.z);
-}
 
 int main() {
 	printf("Initializing...");
@@ -74,21 +60,14 @@ int main() {
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
 
-	ew::MeshData cubeMesh;
-	ew::createCube(0.5f,&cubeMesh);
+	ew::MeshData cubeMeshData;
+	ew::createCube(0.5f,&cubeMeshData);
+	ew::Mesh cubeMesh;
+	cubeMesh.load(cubeMeshData);
 
 	std::string vertexShaderSource = ew::loadShaderSourceFromFile("assets/unlit.vert");
 	std::string fragmentShaderSource = ew::loadShaderSourceFromFile("assets/unlit.frag");
 	unsigned int shader = ew::createShaderProgram(vertexShaderSource.c_str(), fragmentShaderSource.c_str());
-	unsigned int vaoA = ew::createVAO(cubeMesh.vertices,cubeMesh.indices);
-	unsigned int texture = ew::loadTexture("assets/bricks_color.jpg",GL_REPEAT,GL_LINEAR);
-
-	//Set static uniforms
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, texture);
-	int textureLocation = glGetUniformLocation(shader, "uTexture");
-	glUniform1i(textureLocation, 0);
-	int timeLocation = glGetUniformLocation(shader, "uTime");
 
 	//Randomize cube transforms
 	float cubeFieldRadius = 5.0f;
@@ -117,12 +96,11 @@ int main() {
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glUseProgram(shader);
 
-		glBindVertexArray(vaoA);
+		cubeMesh.bind();
 		
 		//The current time in seconds this frame
 		float time = (float)glfwGetTime();
-		//Set the value of the variable at the location
-		glUniform1f(timeLocation, time);
+
 		camera.position = ew::Vec3(cos(time * camera.orbitSpeed) * camera.orbitDistance, 0.0f, sin(time * camera.orbitSpeed) * camera.orbitDistance);
 
 		//Construct model matrix
@@ -136,11 +114,10 @@ int main() {
 		//Draw using elements
 		for (size_t i = 0; i < NUM_CUBES; i++)
 		{
-			ew::Mat4 model = getModelMatrix(cubeTransforms[i]);
+			ew::Mat4 model = cubeTransforms[i].getModelMatrix();
 			glUniformMatrix4fv(glGetUniformLocation(shader, "_Model"), 1, GL_FALSE, &model[0][0]);
-			glDrawElements(GL_TRIANGLES, cubeMesh.indices.size(), GL_UNSIGNED_INT, NULL);
+			glDrawElements(GL_TRIANGLES, cubeMesh.getNumIndices(), GL_UNSIGNED_INT, NULL);
 		}
-		
 
 		//Render UI
 		{

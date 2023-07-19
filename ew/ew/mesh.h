@@ -21,9 +21,10 @@ namespace ew {
 		inline int getNumIndices()const { return m_numIndices; }
 	private:
 		bool m_initialized = false;
-		unsigned int m_vao, m_vbo, m_ebo;
-		int m_numVertices = 0, m_numIndices = 0;
+		unsigned int m_vao = 0;
+		unsigned int m_vbo = 0;
+		unsigned int m_ebo = 0;
+		int m_numVertices = 0;
+		int m_numIndices = 0;
 	};
-
-	unsigned int createVAO(const std::vector<Vertex>& vertices, const std::vector<unsigned int>& indices);
 }
