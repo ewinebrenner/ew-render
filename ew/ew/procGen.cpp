@@ -105,4 +105,65 @@ namespace ew {
 			 mesh->indices.push_back(bottomIndex - i + 1);
 		 }
 	 }
+	 void createRingVertices(float y, float radius, int numSegments, bool isCap, MeshData* mesh) {
+		 float thetaStep = (2 * PI) / numSegments; //Horizontal angle 
+		 for (size_t i = 0; i <= numSegments; i++)
+		 {
+			 float theta = i * thetaStep;
+			 float x = cos(theta);
+			 float z = sin(theta);
+			 Vertex vertex;
+			 vertex.pos = Vec3(x * radius, y, z * radius);
+			 vertex.normal = isCap ? Normalize(Vec3(0,y,0)) : Normalize(Vec3(x, 0, z));
+			 mesh->vertices.push_back(vertex);
+		 }
+	 }
+	 void createCylinder(float height, float radius, int numSegments, MeshData* mesh)
+	 {
+		 mesh->vertices.clear();
+		 mesh->indices.clear();
+		 float halfHeight = height / 2.0f;
+		 //VERTICES---------------
+		 //Top center
+		 mesh->vertices.push_back({ Vec3(0.0f,halfHeight,0.0f),Vec3(0,1,0)});
+		 //Top ring (facing up)
+		 createRingVertices(halfHeight, radius, numSegments, true, mesh);
+		 unsigned int sideStart = mesh->vertices.size() - 1;
+		 //Top ring (facing side)
+		 createRingVertices(halfHeight, radius, numSegments, false, mesh);
+		 //Bottom ring (facing side)
+		 createRingVertices(-halfHeight, radius, numSegments, false, mesh);
+		 //Bottom ring (facing down)
+		 createRingVertices(-halfHeight, radius, numSegments, true, mesh);
+		 //Bottom center
+		 mesh->vertices.push_back({ Vec3(0.0f,-halfHeight,0.0f),Vec3(0,-1,0) });
+		 //INDICES-----------
+		 //Top cap
+		 for (size_t i = 1; i <= numSegments; i++)
+		 {
+			 mesh->indices.push_back(i);
+			 mesh->indices.push_back(0);
+			 mesh->indices.push_back(i + 1);
+		 }
+		 //Side quads
+		 int ringVertexCount = numSegments + 1;
+		 for (size_t i = 0; i <= numSegments; i++)
+		 {
+			 int start = sideStart + i; //Starting index of quad
+			 mesh->indices.push_back(start);
+			 mesh->indices.push_back(start + 1);
+			 mesh->indices.push_back(start + ringVertexCount);
+			 mesh->indices.push_back(start + ringVertexCount);
+			 mesh->indices.push_back(start + 1);
+			 mesh->indices.push_back(start + ringVertexCount+1);
+		 }
+		 //Bottom cap
+		 unsigned int bottomIndex = mesh->vertices.size() - 1;
+		 for (size_t i = 1; i <= numSegments + 1; i++)
+		 {
+			 mesh->indices.push_back(bottomIndex);
+			 mesh->indices.push_back(bottomIndex - i);
+			 mesh->indices.push_back(bottomIndex - i + 1);
+		 }
+	 }
 }

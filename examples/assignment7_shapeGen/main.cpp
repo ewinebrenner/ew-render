@@ -57,6 +57,7 @@ struct CameraController {
 const int NUM_CUBES = 8;
 Transform cubeTransform;
 Transform sphereTransform;
+Transform cylinderTransform;
 
 Camera camera;
 CameraController cameraController;
@@ -71,6 +72,16 @@ struct Settings {
 	bool wireFrame = false;
 }settings;
 
+void drawMesh(unsigned int shader, const ew::MeshData& mesh, unsigned int vao, const Transform& transform, int drawMode) {
+	glBindVertexArray(vao);
+	glUniformMatrix4fv(glGetUniformLocation(shader, "_Model"), 1, GL_FALSE, &getModelMatrix(transform)[0][0]);
+	if (drawMode == GL_TRIANGLES) {
+		glDrawElements(drawMode, mesh.indices.size(), GL_UNSIGNED_INT, NULL);
+	}
+	else {
+		glDrawArrays(drawMode, 0, mesh.vertices.size());
+	}
+}
 int main() {
 	printf("Initializing...");
 	if (!glfwInit()) {
@@ -104,18 +115,20 @@ int main() {
 
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-	ew::MeshData cubeMesh, sphereMesh;
+	ew::MeshData cubeMesh, sphereMesh, cylinderMesh;
 	ew::createCube(0.5f,&cubeMesh);
 	ew::createSphere(0.5f, 16, &sphereMesh);
+	ew::createCylinder(1.0f, 0.5f, 16, &cylinderMesh);
 
 	std::string vertexShaderSource = ew::loadShaderSourceFromFile("assets/unlit.vert");
 	std::string fragmentShaderSource = ew::loadShaderSourceFromFile("assets/unlit.frag");
 	unsigned int shader = ew::createShaderProgram(vertexShaderSource.c_str(), fragmentShaderSource.c_str());
 	unsigned int cubeVAO = ew::createVAO(cubeMesh.vertices, cubeMesh.indices);
 	unsigned int sphereVAO = ew::createVAO(sphereMesh.vertices, sphereMesh.indices);
+	unsigned int cylinderVAO = ew::createVAO(cylinderMesh.vertices, cylinderMesh.indices);
 
 	sphereTransform.position = ew::Vec3(2.0f, 0.0f, 0.0f);
-
+	cylinderTransform.position = ew::Vec3(-2.0f, 0.0f, 0.0f);
 
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
@@ -151,25 +164,9 @@ int main() {
 		glUniformMatrix4fv(glGetUniformLocation(shader, "_Projection"), 1, GL_FALSE, &projection[0][0]);
 
 		int drawMode = settings.glDrawModes[settings.drawModeIndex];
-		//Draw cube
-		glBindVertexArray(cubeVAO);
-		glUniformMatrix4fv(glGetUniformLocation(shader, "_Model"), 1, GL_FALSE, &getModelMatrix(cubeTransform)[0][0]);
-		if (drawMode == GL_TRIANGLES) {
-			glDrawElements(drawMode, cubeMesh.indices.size(), GL_UNSIGNED_INT, NULL);
-		}
-		else {
-			glDrawArrays(drawMode, 0, cubeMesh.vertices.size());
-		}
-
-		//Draw sphere
-		glBindVertexArray(sphereVAO);
-		glUniformMatrix4fv(glGetUniformLocation(shader, "_Model"), 1, GL_FALSE, &getModelMatrix(sphereTransform)[0][0]);
-		if (drawMode == GL_TRIANGLES) {
-			glDrawElements(drawMode, sphereMesh.indices.size(), GL_UNSIGNED_INT, NULL);
-		}
-		else {
-			glDrawArrays(drawMode, 0, sphereMesh.vertices.size());
-		}
+		drawMesh(shader, cubeMesh, cubeVAO, cubeTransform, drawMode);
+		drawMesh(shader, sphereMesh, sphereVAO, sphereTransform, drawMode);
+		drawMesh(shader, cylinderMesh, cylinderVAO, cylinderTransform, drawMode);
 
 		//Render UI
 		{
