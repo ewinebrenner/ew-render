@@ -43,7 +43,7 @@ struct Camera {
 	ew::Vec3 target = ew::Vec3(0.0f, 0.0f, 1.0f);
 	bool orthographic = false;
 	float orthographicHeight = 10.0f;
-	
+
 };
 struct CameraController {
 	float moveSpeed = 5.0f;
@@ -70,18 +70,24 @@ struct Settings {
 	int glDrawModes[2] = { GL_TRIANGLES,GL_POINTS };
 	int drawModeIndex = 0;
 	bool wireFrame = false;
+
+	int sphereSegments = 16;
+	int cylinderSegments = 16;
+
 }settings;
 
-void drawMesh(unsigned int shader, const ew::MeshData& mesh, unsigned int vao, const Transform& transform, int drawMode) {
-	glBindVertexArray(vao);
+void drawMesh(unsigned int shader, const ew::Mesh& mesh, const Transform& transform, int drawMode) {
+	mesh.bind();
+
 	glUniformMatrix4fv(glGetUniformLocation(shader, "_Model"), 1, GL_FALSE, &getModelMatrix(transform)[0][0]);
 	if (drawMode == GL_TRIANGLES) {
-		glDrawElements(drawMode, mesh.indices.size(), GL_UNSIGNED_INT, NULL);
+		glDrawElements(drawMode, mesh.getNumIndices(), GL_UNSIGNED_INT, NULL);
 	}
 	else {
-		glDrawArrays(drawMode, 0, mesh.vertices.size());
+		glDrawArrays(drawMode, 0, mesh.getNumVertices());
 	}
 }
+
 int main() {
 	printf("Initializing...");
 	if (!glfwInit()) {
@@ -115,17 +121,19 @@ int main() {
 
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-	ew::MeshData cubeMesh, sphereMesh, cylinderMesh;
-	ew::createCube(0.5f,&cubeMesh);
-	ew::createSphere(0.5f, 16, &sphereMesh);
-	ew::createCylinder(1.0f, 0.5f, 16, &cylinderMesh);
+	ew::MeshData cubeMeshData, sphereMeshData, cylinderMeshData;
+	ew::createCube(0.5f,&cubeMeshData);
+	ew::createSphere(0.5f, settings.sphereSegments, &sphereMeshData);
+	ew::createCylinder(1.0f, 0.5f, settings.cylinderSegments, &cylinderMeshData);
+
+	ew::Mesh cubeMesh, sphereMesh, cylinderMesh;
+	cubeMesh.load(cubeMeshData);
+	sphereMesh.load(sphereMeshData);
+	cylinderMesh.load(cylinderMeshData);
 
 	std::string vertexShaderSource = ew::loadShaderSourceFromFile("assets/unlit.vert");
 	std::string fragmentShaderSource = ew::loadShaderSourceFromFile("assets/unlit.frag");
 	unsigned int shader = ew::createShaderProgram(vertexShaderSource.c_str(), fragmentShaderSource.c_str());
-	unsigned int cubeVAO = ew::createVAO(cubeMesh.vertices, cubeMesh.indices);
-	unsigned int sphereVAO = ew::createVAO(sphereMesh.vertices, sphereMesh.indices);
-	unsigned int cylinderVAO = ew::createVAO(cylinderMesh.vertices, cylinderMesh.indices);
 
 	sphereTransform.position = ew::Vec3(2.0f, 0.0f, 0.0f);
 	cylinderTransform.position = ew::Vec3(-2.0f, 0.0f, 0.0f);
@@ -136,7 +144,6 @@ int main() {
 
 		glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		glUseProgram(shader);
 
 		//The current time in seconds this frame
 		float time = (float)glfwGetTime();
@@ -160,13 +167,15 @@ int main() {
 		ew::Mat4 projection = camera.orthographic ? 
 			ew::OrthographicMatrix(camera.orthographicHeight, (float)SCREEN_WIDTH / SCREEN_HEIGHT, 0.01f,1000.0f) :
 			ew::PerspectiveMatrix(ew::Radians(camera.fov), (float)SCREEN_WIDTH / SCREEN_HEIGHT, 0.01f, 1000.0f);
+
+		glUseProgram(shader);
 		glUniformMatrix4fv(glGetUniformLocation(shader, "_View"), 1, GL_FALSE, &view[0][0]);
 		glUniformMatrix4fv(glGetUniformLocation(shader, "_Projection"), 1, GL_FALSE, &projection[0][0]);
 
 		int drawMode = settings.glDrawModes[settings.drawModeIndex];
-		drawMesh(shader, cubeMesh, cubeVAO, cubeTransform, drawMode);
-		drawMesh(shader, sphereMesh, sphereVAO, sphereTransform, drawMode);
-		drawMesh(shader, cylinderMesh, cylinderVAO, cylinderTransform, drawMode);
+		drawMesh(shader, cubeMesh, cubeTransform, drawMode);
+		drawMesh(shader, sphereMesh, sphereTransform, drawMode);
+		drawMesh(shader, cylinderMesh, cylinderTransform, drawMode);
 
 		//Render UI
 		{
@@ -202,6 +211,14 @@ int main() {
 					cubeTransform.rotation = ew::Vec3(0.0f);
 					cubeTransform.scale = ew::Vec3(1.0f);
 				}
+			}
+			if (ImGui::DragInt("Sphere Segments", &settings.sphereSegments, 1, 3, 512)) {
+				ew::createSphere(0.5f, settings.sphereSegments, &sphereMeshData);
+				sphereMesh.load(sphereMeshData);
+			}
+			if (ImGui::DragInt("Cylinder Segments", &settings.cylinderSegments, 1, 3, 512)) {
+				ew::createCylinder(1.0f,0.5f,settings.cylinderSegments, &cylinderMeshData);
+				cylinderMesh.load(cylinderMeshData);
 			}
 			
 			ImGui::End();
