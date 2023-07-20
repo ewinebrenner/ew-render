@@ -4,10 +4,10 @@
 #include "external/glad.h"
 
 namespace ew {
-	std::string loadShaderSourceFromFile(const char* filePath) {
+	std::string loadShaderSourceFromFile(const std::string& filePath) {
 		std::ifstream fstream(filePath);
 		if (!fstream.is_open()) {
-			printf("Failed to load file %s", filePath);
+			printf("Failed to load file %s", filePath.c_str());
 			return {};
 		}
 		std::stringstream buffer;
@@ -78,17 +78,29 @@ namespace ew {
 	{
 		glUniform1f(glGetUniformLocation(m_id,name.c_str()), v);
 	}
+	void Shader::setVec2(const std::string& name, float x, float y) const
+	{
+		glUniform2f(glGetUniformLocation(m_id, name.c_str()), x, y);
+	}
 	void Shader::setVec2(const std::string& name, Vec2 v) const
 	{
-		glUniform2f(glGetUniformLocation(m_id, name.c_str()), v.x, v.y);
+		setVec2(name, v.x, v.y);
+	}
+	void Shader::setVec3(const std::string& name, float x, float y, float z) const
+	{
+		glUniform3f(glGetUniformLocation(m_id, name.c_str()), x, y, z);
 	}
 	void Shader::setVec3(const std::string& name, Vec3 v) const
 	{
-		glUniform3f(glGetUniformLocation(m_id, name.c_str()), v.x, v.y, v.z);
+		setVec3(name,v.x, v.y, v.z);
+	}
+	void Shader::setVec4(const std::string& name, float x, float y, float z, float w) const
+	{
+		glUniform4f(glGetUniformLocation(m_id, name.c_str()),x,y,z,w);
 	}
 	void Shader::setVec4(const std::string& name, Vec4 v) const
 	{
-		glUniform4f(glGetUniformLocation(m_id, name.c_str()), v.x, v.y, v.z, v.w);
+		setVec4(name, v.x, v.y, v.y, v.w);
 	}
 	void Shader::setMat4(const std::string& name, const Mat4& v) const
 	{

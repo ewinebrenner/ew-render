@@ -12,6 +12,7 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 
+#include <ew/ew.h>
 #include <ew/external/stb_image.h>
 
 const int SCREEN_WIDTH = 1080;
@@ -36,58 +37,6 @@ Vertex vertices[4] = {
 unsigned int indices[6] = {
 	0, 1, 2, 2, 3, 0
 };
-
-std::string loadShaderSourceFromFile(const std::string& filePath) {
-	std::ifstream fstream(filePath);
-	if (!fstream.is_open()) {
-		printf("Failed to load file %s", filePath);
-		return {};
-	}
-	std::stringstream buffer;
-	buffer << fstream.rdbuf();
-	return buffer.str();
-}
-
-unsigned int createShader(GLenum shaderType, const char* sourceCode) {
-	//Create a new vertex shader object
-	unsigned int shader = glCreateShader(shaderType);
-	//Supply the shader object with source code
-	glShaderSource(shader, 1, &sourceCode, NULL);
-	//Compile the shader object
-	glCompileShader(shader);
-	int success;
-	glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
-	if (!success) {
-		//512 is an arbitrary length, but should be plenty of characters for our error message.
-		char infoLog[512];
-		glGetShaderInfoLog(shader, 512, NULL, infoLog);
-		printf("Failed to compile shader: %s", infoLog);
-	}
-	return shader;
-}
-
-unsigned int createShaderProgram(const char* vertexShaderSource, const char* fragmentShaderSource) {
-	unsigned int vertexShader = createShader(GL_VERTEX_SHADER, vertexShaderSource);
-	unsigned int fragmentShader = createShader(GL_FRAGMENT_SHADER, fragmentShaderSource);
-
-	unsigned int shaderProgram = glCreateProgram();
-	//Attach each stage
-	glAttachShader(shaderProgram, vertexShader);
-	glAttachShader(shaderProgram, fragmentShader);
-	//Link all the stages together
-	glLinkProgram(shaderProgram);
-	int success;
-	glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
-	if (!success) {
-		char infoLog[512];
-		glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
-		printf("Failed to link shader program: %s", infoLog);
-	}
-	//The linked program now contains our compiled code, so we can delete these intermediate objects
-	glDeleteShader(vertexShader);
-	glDeleteShader(fragmentShader);
-	return shaderProgram;
-}
 
 unsigned int createVAO(Vertex* vertexData, int numVertices, unsigned int* indicesData, int numIndices) {
 	unsigned int vao;
@@ -205,13 +154,8 @@ int main() {
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
 	ImGui_ImplOpenGL3_Init();
 
-	unsigned int backgroundShader = createShaderProgram(
-		loadShaderSourceFromFile("assets/background.vert").c_str(), 
-		loadShaderSourceFromFile("assets/background.frag").c_str());
-
-	unsigned int characterShader = createShaderProgram(
-		loadShaderSourceFromFile("assets/character.vert").c_str(), 
-		loadShaderSourceFromFile("assets/character.frag").c_str());
+	ew::Shader backgroundShader("assets/background.vert", "assets/background.frag");
+	ew::Shader characterShader("assets/character.vert", "assets/character.frag");
 
 	unsigned int vaoA = createVAO(vertices, 4, indices, 6);
 
@@ -234,36 +178,38 @@ int main() {
 
 		glBindVertexArray(vaoA);
 
-		glUseProgram(backgroundShader);
-
 		//The current time in seconds this frame
 		float time = (float)glfwGetTime();
 		
 		//Draw background
-		glUseProgram(backgroundShader);
-		glUniform1f(glGetUniformLocation(backgroundShader, "_Time"), time);
+		backgroundShader.use();
+		backgroundShader.setFloat("_Time", time);
+
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, textureA);
 		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D, textureB);
 		glActiveTexture(GL_TEXTURE2);
 		glBindTexture(GL_TEXTURE_2D, noiseTexture);
-		glUniform1i(glGetUniformLocation(backgroundShader, "_TextureA"), 0);
-		glUniform1i(glGetUniformLocation(backgroundShader, "_TextureB"), 1);
-		glUniform1i(glGetUniformLocation(backgroundShader, "_NoiseTexture"), 2);
-		glUniform1f(glGetUniformLocation(backgroundShader, "_DistortionStrength"), bgSettings.distortionStrength);
-		glUniform1f(glGetUniformLocation(backgroundShader, "_DistortionSpeed"), bgSettings.distortionSpeed);
-		glUniform4f(glGetUniformLocation(backgroundShader, "_GlowColor"), bgSettings.glowColor.r, bgSettings.glowColor.g, bgSettings.glowColor.b, bgSettings.glowColor.a);
+
+		backgroundShader.setInt("_TextureA", 0);
+		backgroundShader.setInt("_TextureB", 1);
+		backgroundShader.setInt("_NoiseTexture", 2);
+		backgroundShader.setFloat("_DistortionStrength", bgSettings.distortionStrength);
+		backgroundShader.setFloat("_DistortionSpeed", bgSettings.distortionSpeed);
+		backgroundShader.setVec4("_GlowColor", bgSettings.glowColor.r, bgSettings.glowColor.g, bgSettings.glowColor.b, bgSettings.glowColor.a);
+
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL);
 
 		//Draw character
-		glUseProgram(characterShader);
-		glUniform1f(glGetUniformLocation(characterShader, "_Time"), time);
+		characterShader.use();
+		characterShader.setFloat("_Time", time);
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, characterTexture);
-		glUniform1i(glGetUniformLocation(characterShader, "_Texture"), 0);
-		glUniform4f(glGetUniformLocation(characterShader, "_Color"), characterColor.r, characterColor.g, characterColor.b, characterColor.a);
-		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL);
+		characterShader.setInt("_Texture", 0);
+		characterShader.setVec4("_Color", characterColor.r, characterColor.g, characterColor.b, characterColor.a);
+
+		//glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL);
 
 		//Render UI
 		{

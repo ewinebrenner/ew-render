@@ -54,38 +54,21 @@ int main() {
 	cubeMesh.load(cubeMeshData);
 	ew::Transform cubeTransform;
 
-	std::string vertexShaderSource = ew::loadShaderSourceFromFile("assets/unlit.vert");
-	std::string fragmentShaderSource = ew::loadShaderSourceFromFile("assets/unlit.frag");
-	unsigned int shader = ew::createShaderProgram(vertexShaderSource.c_str(), fragmentShaderSource.c_str());
+	ew::Shader shader("assets/unlit.vert", "assets/unlit.frag");
 	unsigned int texture = ew::loadTexture("assets/bricks_color.jpg",GL_REPEAT,GL_LINEAR);
-
-	//Set static uniforms
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, texture);
-	int textureLocation = glGetUniformLocation(shader, "uTexture");
-	glUniform1i(textureLocation, 0);
-	int timeLocation = glGetUniformLocation(shader, "uTime");
-	int scaleLocation = glGetUniformLocation(shader, "uScale");
-	int modelTransformLocation = glGetUniformLocation(shader, "uModel");
 
 
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
 		glClearColor(0.3f, 0.4f, 0.9f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		glUseProgram(shader);
 
-		
-		
-		//The current time in seconds this frame
-		float time = (float)glfwGetTime();
-		//Set the value of the variable at the location
-		glUniform1f(timeLocation, time);
+		shader.use();
 
 		//Construct model matrix
-		ew::Mat4 model = cubeTransform.getModelMatrix();
-		glUniformMatrix4fv(modelTransformLocation, 1, GL_FALSE, &model[0][0]);
+		shader.setMat4("_Model", cubeTransform.getModelMatrix());
 
+		//Draw cube
 		cubeMesh.bind();
 		glDrawElements(GL_TRIANGLES, cubeMesh.getNumIndices(), GL_UNSIGNED_INT, NULL);
 

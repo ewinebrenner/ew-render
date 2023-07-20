@@ -11,11 +11,12 @@ uniform float _DistortionSpeed;
 uniform vec4 _GlowColor;
 
 void main(){
-	float noise = texture(_NoiseTexture,UV+_Time*_DistortionSpeed).r;
-    vec2 uv = UV + (noise * _DistortionStrength)-_DistortionStrength*0.5;
+	//float noise = texture(_NoiseTexture,UV+_Time*_DistortionSpeed).r;
+	float noise = texture(_NoiseTexture,UV).r;
+    vec2 uv = UV + noise * 0.1f;
 	vec4 colorA = texture(_TextureA,uv);
 	vec4 colorB = texture(_TextureB,uv);
-	vec3 color = mix(colorA.rgb,colorB.rgb,colorB.a * 0.2);
-	color += noise * _GlowColor.rgb;
+	vec3 color = mix(colorA.rgb,colorB.rgb,colorB.a * 0.5);
+	//color += noise * _GlowColor.rgb;
 	FragColor = vec4(color,1.0);
 }

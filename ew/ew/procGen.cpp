@@ -50,7 +50,7 @@ namespace ew {
 		 mesh->indices.clear();
 		 //VERTICES---------------
 		 //Top center
-		 mesh->vertices.push_back({ Vec3(0.0f,radius,0.0f),Vec3(0,1,0),Vec2(0.5,1.0)});
+		 mesh->vertices.push_back({ Vec3(0.0f,radius,0.0f),Vec3(0,1,0),Vec2(0.5,0.5)});
 		 float thetaStep = (2 * PI) / numSegments; //Horizontal angle 
 		 float phiStep = PI / numSegments; //Vertical angle
 		 //Row
@@ -72,7 +72,7 @@ namespace ew {
 			 }
 		 }
 		 //Bottom
-		 mesh->vertices.push_back({ Vec3(0.0f,-radius,0.0f),Vec3(0,-1,0),Vec2(0.5,0.0)});
+		 mesh->vertices.push_back({ Vec3(0.0f,-radius,0.0f),Vec3(0,-1,0),Vec2(0.5,0.5)});
 		 //INDICES-----------------
 		 //Top cap
 		 for (size_t i = 1; i <= numSegments; i++)

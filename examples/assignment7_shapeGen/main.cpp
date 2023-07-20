@@ -57,7 +57,8 @@ struct Settings {
 	int glDrawModes[2] = { GL_TRIANGLES,GL_POINTS };
 	int drawModeIndex = 0;
 	bool wireFrame = false;
-
+	const char* debugModeNames[3] = { "Normals", "UVs", "Texture"};
+	int debugModeIndex = 0;
 	int sphereSegments = 16;
 	int cylinderSegments = 16;
 	int planeSegments = 10;
@@ -121,6 +122,7 @@ int main() {
 	planeMesh.load(planeMeshData);
 
 	ew::Shader shader("assets/unlit.vert", "assets/unlit.frag");
+	unsigned int texture = ew::loadTexture("assets/bricks_color.jpg", GL_REPEAT, GL_LINEAR_MIPMAP_LINEAR);
 
 	sphereTransform.position = ew::Vec3(2.0f, 0.0f, 0.0f);
 	cylinderTransform.position = ew::Vec3(-2.0f, 0.0f, 0.0f);
@@ -160,6 +162,12 @@ int main() {
 		shader.use();
 		shader.setMat4("_ViewProjection", viewProjection);
 
+		shader.setInt("_DebugMode", settings.debugModeIndex);
+		glActiveTexture(0);
+		glBindTexture(GL_TEXTURE_2D, texture);
+
+		shader.setInt("_Texture", 0);
+
 		int drawMode = settings.glDrawModes[settings.drawModeIndex];
 		drawMesh(shader, cubeMesh, cubeTransform, drawMode);
 		drawMesh(shader, sphereMesh, sphereTransform, drawMode);
@@ -178,6 +186,7 @@ int main() {
 			}
 
 			ImGui::Combo("Draw mode", &settings.drawModeIndex, settings.drawModeNames, IM_ARRAYSIZE(settings.drawModeNames));
+			ImGui::Combo("Debug mode", &settings.debugModeIndex, settings.debugModeNames, IM_ARRAYSIZE(settings.debugModeNames));
 
 			if (ImGui::DragInt("Sphere Segments", &settings.sphereSegments, 1, 3, 512)) {
 				ew::createSphere(0.5f, settings.sphereSegments, &sphereMeshData);

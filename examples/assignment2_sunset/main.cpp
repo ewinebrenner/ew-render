@@ -87,32 +87,26 @@ int main() {
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
 	ImGui_ImplOpenGL3_Init();
 
-	std::string vertexShaderSource = ew::loadShaderSourceFromFile("assets/unlit.vert");
-	std::string fragmentShaderSource = ew::loadShaderSourceFromFile("assets/unlit.frag");
-	unsigned int shader = ew::createShaderProgram(vertexShaderSource.c_str(), fragmentShaderSource.c_str());
-	unsigned int vaoA = createVAO(vertices, 4, indices, 6);
+	ew::Shader shader("assets/unlit.vert", "assets/unlit.frag");
 
-	glUseProgram(shader);
-	int timeLocation = glGetUniformLocation(shader, "iTime");
-	int resolutionLocation = glGetUniformLocation(shader, "iResolution");
+	unsigned int vaoA = createVAO(vertices, 4, indices, 6);
 
 
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
 		glClearColor(0.1f,0.1f,0.1f,1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
-		glUseProgram(shader);
 
+		shader.use();
 
 		glBindVertexArray(vaoA);
 		
 		//The current time in seconds this frame
 		float time = (float)glfwGetTime();
-		//Set the value of the variable at the location
-		glUniform1f(timeLocation, time);
 
-		glUniform2f(resolutionLocation,(float)SCREEN_WIDTH, (float)SCREEN_HEIGHT);
-		
+		shader.setFloat("_Time", time);
+
+		shader.setVec2("_Resolution", ew::Vec2((float)SCREEN_WIDTH, (float)SCREEN_HEIGHT));
 
 		//Draw using elements
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL);
