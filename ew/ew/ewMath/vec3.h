@@ -19,6 +19,7 @@ namespace ew {
 		friend Vec3 operator+(Vec3 lhs, const Vec3& rhs);
 		friend Vec3 operator-(Vec3 lhs, const Vec3& rhs);
 		friend Vec3 operator*(Vec3 lhs, float rhs);
+		friend Vec3 operator*(float lhs, Vec3 rhs);
 		friend Vec3 operator/(Vec3 lhs, float rhs);
 		friend Vec3 operator-(const Vec3& rhs);
 	};
@@ -68,6 +69,11 @@ namespace ew {
 	{
 		lhs *= rhs;
 		return lhs;
+	}
+	inline Vec3 operator*(float lhs, Vec3 rhs)
+	{
+		rhs *= lhs;
+		return rhs;
 	}
 
 	inline Vec3 operator/(Vec3 lhs, float rhs)

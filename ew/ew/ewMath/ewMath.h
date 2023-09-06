@@ -16,4 +16,10 @@ namespace ew {
 		float t = (float)rand() / RAND_MAX;
 		return min + (max - min) * t;
 	}
+	inline float Lerp(float a, float b, float t) {
+		return a + (b - a) * t;
+	}
+	inline Vec3 Lerp(Vec3 a, Vec3 b, float t) {
+		return a + (b - a) * t;
+	}
 }
