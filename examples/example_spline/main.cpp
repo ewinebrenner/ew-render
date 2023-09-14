@@ -15,10 +15,12 @@
 #include <ew/ew.h>
 #include <ew/procGen.h>
 #include <ew/ewMath/transformations.h>
+#include <ew/external/imguizmo/ImGuizmo.h>
 
 void processInput(GLFWwindow* window);
 void onCursorMoved(GLFWwindow* window, double xpos, double ypos);
 void onMouseButtonPressed(GLFWwindow* window, int button, int action, int mods);
+void EditTransform(const float* view, const float* projection, float* matrix, ImGuizmo::OPERATION &mCurrentGizmoOperation, ImGuizmo::MODE& mCurrentGizmoMode);
 
 const int SCREEN_WIDTH = 1920;
 const int SCREEN_HEIGHT = 1080;
@@ -29,7 +31,6 @@ struct Camera {
 	ew::Vec3 target = ew::Vec3(0.0f, 0.0f, 1.0f);
 	bool orthographic = false;
 	float orthographicHeight = 10.0f;
-
 };
 struct CameraController {
 	float moveSpeed = 5.0f;
@@ -41,7 +42,7 @@ struct CameraController {
 };
 
 const int NUM_CUBES = 8;
-ew::Transform cubeTransform;
+ew::Transform splineTransform;
 ew::Transform sphereTransform;
 ew::Transform cylinderTransform;
 ew::Transform planeTransform;
@@ -76,6 +77,12 @@ ew::Vec3 controlPoints[4] = {
 };
 int splineSegments = 32;
 float splineWidth = 0.3f;
+
+void drawMesh(const ew::Shader& shader, const ew::Mesh& mesh, const ew::Mat4& modelMatrix) {
+	mesh.bind();
+	shader.setMat4("_Model", modelMatrix);
+	glDrawElements(GL_TRIANGLES, mesh.getNumIndices(), GL_UNSIGNED_INT, NULL);
+}
 
 void drawMesh(const ew::Shader& shader, const ew::Mesh& mesh, const ew::Transform& transform, int drawMode = GL_TRIANGLES) {
 	mesh.bind();
@@ -187,15 +194,16 @@ int main() {
 
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-	ew::MeshData splineMeshData, sphereMeshData;
+	ew::MeshData splineMeshData, sphereMeshData, cubeMeshData;
 	createCubicBezierTrackMesh(controlPoints[0], controlPoints[1], controlPoints[2], controlPoints[3], 32,splineWidth, &splineMeshData);
 
-
 	ew::createSphere(0.5f, 32, &sphereMeshData);
+	ew::createCube(1.0f, &cubeMeshData);
 
-	ew::Mesh splineMesh, sphereMesh;
+	ew::Mesh splineMesh, sphereMesh, cubeMesh;
 	splineMesh.load(splineMeshData);
 	sphereMesh.load(sphereMeshData);
+	cubeMesh.load(cubeMeshData);
 	
 	ew::Shader unlitShader("assets/unlit.vert", "assets/unlit.frag");
 	ew::Shader litShader("assets/lit.vert", "assets/lit.frag");
@@ -209,6 +217,8 @@ int main() {
 
 	light.transform.position = ew::Vec3(2.0f, 2.0f, 0.0f);
 	light.transform.scale = ew::Vec3(0.3f);
+
+	ew::Mat4 cubeModelMatrix = ew::IdentityMatrix();
 
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
@@ -242,6 +252,8 @@ int main() {
 
 		ew::Mat4 viewProjection = projection * view;
 
+	
+
 		//Set uniforms
 		litShader.use();
 		litShader.setMat4("_ViewProjection", viewProjection);
@@ -260,12 +272,14 @@ int main() {
 		litShader.setFloat("_Material.specularK", material.specularK);
 		litShader.setFloat("_Material.shininess", material.shininess);
 
-		drawMesh(litShader, splineMesh, cubeTransform, GL_TRIANGLES);
+		drawMesh(litShader, splineMesh, splineTransform, GL_TRIANGLES);
+		drawMesh(litShader, cubeMesh, cubeModelMatrix);
 
 		unlitShader.use();
 		unlitShader.setMat4("_ViewProjection", viewProjection);
 		unlitShader.setVec4("_Color", light.color);
 		drawMesh(unlitShader, sphereMesh, light.transform);
+
 
 		//Render UI
 		{
@@ -314,6 +328,32 @@ int main() {
 			
 			ImGui::End();
 
+			//IMGUIZMO
+
+			ImGuizmo::SetOrthographic(camera.orthographic);
+			ImGuizmo::BeginFrame();
+		//	ImGuizmo::DrawGrid(&view[0][0], &projection[0][0], &ew::IdentityMatrix()[0][0], 100.f);
+
+			static ImGuizmo::OPERATION mCurrentGizmoOperation(ImGuizmo::ROTATE);
+			static ImGuizmo::MODE mCurrentGizmoMode(ImGuizmo::WORLD);
+
+			if (glfwGetInputMode(window, GLFW_CURSOR) != GLFW_CURSOR_DISABLED) {
+				if (ImGui::IsKeyPressed(ImGuiKey::ImGuiKey_W))
+					mCurrentGizmoOperation = ImGuizmo::TRANSLATE;
+				if (ImGui::IsKeyPressed(ImGuiKey::ImGuiKey_E))
+					mCurrentGizmoOperation = ImGuizmo::ROTATE;
+				if (ImGui::IsKeyPressed(ImGuiKey::ImGuiKey_R)) 
+					mCurrentGizmoOperation = ImGuizmo::SCALE;
+				if (ImGui::IsKeyPressed(ImGuiKey::ImGuiKey_Z)) 
+					mCurrentGizmoMode = ImGuizmo::WORLD;
+				if (ImGui::IsKeyPressed(ImGuiKey::ImGuiKey_X))
+					mCurrentGizmoMode = ImGuizmo::LOCAL;
+			}
+
+			ImGui::Begin("Transform");
+			EditTransform(&view[0][0], &projection[0][0], &cubeModelMatrix[0][0], mCurrentGizmoOperation, mCurrentGizmoMode);
+			ImGui::End();
+
 			ImGui::Render();
 			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 		}
@@ -328,6 +368,10 @@ void processInput(GLFWwindow* window) {
 		glfwSetWindowShouldClose(window, true);
 		return;
 	}
+
+	//Only move camera if cursor is locked
+	if (glfwGetInputMode(window, GLFW_CURSOR) != GLFW_CURSOR_DISABLED)
+		return;
 
 	ew::Vec3 forward = ew::Normalize(camera.target - camera.position);
 	ew::Vec3 right = ew::Normalize(ew::Cross(forward, ew::Vec3(0, 1, 0)));
@@ -391,4 +435,61 @@ void onMouseButtonPressed(GLFWwindow* window, int button, int action, int mods)
 		}
 	}
 	
+}
+
+void EditTransform(const float* view, const float* projection, float* matrix, ImGuizmo::OPERATION &mCurrentGizmoOperation, ImGuizmo::MODE &mCurrentGizmoMode)
+{
+	//Global settings
+	if (ImGui::RadioButton("Translate", mCurrentGizmoOperation == ImGuizmo::TRANSLATE))
+		mCurrentGizmoOperation = ImGuizmo::TRANSLATE;
+	ImGui::SameLine();
+	if (ImGui::RadioButton("Rotate", mCurrentGizmoOperation == ImGuizmo::ROTATE))
+		mCurrentGizmoOperation = ImGuizmo::ROTATE;
+	ImGui::SameLine();
+	if (ImGui::RadioButton("Scale", mCurrentGizmoOperation == ImGuizmo::SCALE))
+		mCurrentGizmoOperation = ImGuizmo::SCALE;
+
+	if (mCurrentGizmoOperation != ImGuizmo::SCALE)
+	{
+		if (ImGui::RadioButton("Local", mCurrentGizmoMode == ImGuizmo::LOCAL))
+			mCurrentGizmoMode = ImGuizmo::LOCAL;
+		ImGui::SameLine();
+		if (ImGui::RadioButton("World", mCurrentGizmoMode == ImGuizmo::WORLD))
+			mCurrentGizmoMode = ImGuizmo::WORLD;
+	}
+	static bool useSnap(false);
+	if (ImGui::IsKeyPressed(ImGuiKey_LeftCtrl))
+		useSnap = !useSnap;
+	ImGui::Checkbox("Snap", &useSnap);
+	ImGui::SameLine();
+	static ew::Vec3 snap;
+
+	switch (mCurrentGizmoOperation)
+	{
+	case ImGuizmo::TRANSLATE:
+		snap = 0.1f;
+		ImGui::DragFloat3("Snap", &snap.x, 0.1f);
+		break;
+	case ImGuizmo::ROTATE:
+		snap = 1.0f;
+		ImGui::DragFloat("Angle Snap", &snap.x, 0.1f);
+		break;
+	case ImGuizmo::SCALE:
+		snap = 0.1f;
+		ImGui::DragFloat("Scale Snap", &snap.x, 0.1f);
+		break;
+	}
+
+	//Individual transform
+	float matrixTranslation[3], matrixRotation[3], matrixScale[3];
+	ImGuizmo::DecomposeMatrixToComponents(matrix, matrixTranslation, matrixRotation, matrixScale);
+	ImGui::DragFloat3("Translation", matrixTranslation,0.05f);
+	ImGui::DragFloat3("Rotation", matrixRotation, 1.0f);
+	ImGui::DragFloat3("Scale", matrixScale, 0.05f);
+	ImGuizmo::RecomposeMatrixFromComponents(matrixTranslation, matrixRotation, matrixScale, matrix);
+
+	//Draw gizmo in worldspace
+	ImGuiIO& io = ImGui::GetIO();
+	ImGuizmo::SetRect(0, 0, io.DisplaySize.x, io.DisplaySize.y);
+	ImGuizmo::Manipulate(view, projection, mCurrentGizmoOperation, mCurrentGizmoMode, matrix, NULL, useSnap ? &snap.x : NULL);
 }

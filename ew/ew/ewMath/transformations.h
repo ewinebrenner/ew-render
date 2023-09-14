@@ -18,6 +18,14 @@ namespace ew {
 			0.0f, 0.0f, 0.0f, 1.0f
 		);
 	}
+	inline Mat4 ScaleMatrix(float x) {
+		return Mat4(
+			x, 0.0f, 0.0f, 0.0f,
+			0.0f, x, 0.0f, 0.0f,
+			0.0f, 0.0f, x, 0.0f,
+			0.0f, 0.0f, 0.0f, 1.0f
+		);
+	}
 	inline Mat4 RotateXMatrix(float rad) {
 		const float cosA = cosf(rad);
 		const float sinA = sinf(rad);

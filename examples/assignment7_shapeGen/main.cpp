@@ -41,7 +41,7 @@ struct CameraController {
 };
 
 const int NUM_CUBES = 8;
-ew::Transform cubeTransform;
+ew::Transform splineTransform;
 ew::Transform sphereTransform;
 ew::Transform cylinderTransform;
 ew::Transform planeTransform;
@@ -169,7 +169,7 @@ int main() {
 		shader.setInt("_Texture", 0);
 
 		int drawMode = settings.glDrawModes[settings.drawModeIndex];
-		drawMesh(shader, cubeMesh, cubeTransform, drawMode);
+		drawMesh(shader, cubeMesh, splineTransform, drawMode);
 		drawMesh(shader, sphereMesh, sphereTransform, drawMode);
 		drawMesh(shader, cylinderMesh, cylinderTransform, drawMode);
 		drawMesh(shader, planeMesh, planeTransform, drawMode);
