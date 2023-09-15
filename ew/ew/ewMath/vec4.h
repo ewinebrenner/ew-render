@@ -11,6 +11,7 @@ namespace ew {
 		Vec4(float x, float y, float z, float w) :x(x), y(y), z(z), w(w) {};
 		Vec4(const Vec3& v, float w) :x(v.x), y(v.y), z(v.z), w(w) {};
 
+		inline Vec3 toVec3() const { return ew::Vec3(x, y, z); }
 		//Operator overloads
 		Vec4& operator+=(const Vec4& rhs);
 		Vec4& operator-=(const Vec4& rhs);

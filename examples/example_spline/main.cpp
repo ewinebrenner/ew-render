@@ -62,7 +62,6 @@ Camera camera;
 CameraController cameraController;
 
 struct Light {
-	ew::Transform transform;
 	ew::Vec4 color = ew::Vec4(1.0f, 1.0f, 1.0f, 1.0f);
 };
 
@@ -91,6 +90,7 @@ float splineWidth = 0.3f;
 
 void drawMesh(const ew::Shader& shader, const ew::Mesh& mesh, const ew::Mat4& modelMatrix) {
 	mesh.bind();
+	shader.use();
 	shader.setMat4("_Model", modelMatrix);
 	glDrawElements(GL_TRIANGLES, mesh.getNumIndices(), GL_UNSIGNED_INT, NULL);
 }
@@ -153,12 +153,19 @@ void createCubicBezierTrackMesh(ew::Vec3 p0, ew::Vec3 p1, ew::Vec3 p2, ew::Vec3 
 }
 
 
-const int NUM_CUBES = 8;
-ew::Mat4 cubeTransforms[NUM_CUBES];
-unsigned int selectedCube = 0;
+unsigned int selectionIndex = 0;
 ew::Framebuffer* mouseSelectFramebuffer;
 ImGuiTreeNodeFlags base_flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth;
 int selection_mask = (1 << 2);
+
+struct MeshRenderer {
+	ew::Mat4 transform;
+	ew::Mesh* mesh;
+	ew::Shader* shader;
+};
+
+const int NUM_RENDERERS = 8;
+MeshRenderer meshRenderers[NUM_RENDERERS];
 
 int main() {
 	printf("Initializing...");
@@ -195,9 +202,9 @@ int main() {
 
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
+	//Create meshes
 	ew::MeshData splineMeshData, sphereMeshData, cubeMeshData;
 	createCubicBezierTrackMesh(controlPoints[0], controlPoints[1], controlPoints[2], controlPoints[3], 32,splineWidth, &splineMeshData);
-
 	ew::createSphere(0.5f, 32, &sphereMeshData);
 	ew::createCube(1.0f, &cubeMeshData);
 
@@ -216,12 +223,21 @@ int main() {
 	mouseSelectFramebuffer = &pickingFramebuffer;
 
 	//Set up scene
-	light.transform.position = ew::Vec3(2.0f, 2.0f, 0.0f);
-	light.transform.scale = ew::Vec3(0.3f);
+	MeshRenderer* splineMeshRenderer = &meshRenderers[0];
+	splineMeshRenderer->transform = ew::IdentityMatrix();
+	splineMeshRenderer->mesh = &splineMesh;
+	splineMeshRenderer->shader = &litShader;
 
-	for (size_t i = 0; i < NUM_CUBES; i++)
+	MeshRenderer* lightMeshRenderer = &meshRenderers[1];
+	lightMeshRenderer->transform = ew::TranslationMatrix(3.0f, 3.0f, 0.0f) * ew::ScaleMatrix(0.3f);
+	lightMeshRenderer->mesh = &sphereMesh;
+	lightMeshRenderer->shader = &unlitShader;
+
+	for (size_t i = 2; i < NUM_RENDERERS; i++)
 	{
-		cubeTransforms[i] = ew::IdentityMatrix();
+		meshRenderers[i].transform = ew::IdentityMatrix();
+		meshRenderers[i].mesh = &cubeMesh;
+		meshRenderers[i].shader = &litShader;
 	}
 
 	while (!glfwWindowShouldClose(window)) {
@@ -265,7 +281,7 @@ int main() {
 		litShader.setInt("_Texture", 0);
 
 		litShader.setVec3("_EyePos", camera.position);
-		litShader.setVec3("_Light.position", light.transform.position);
+		litShader.setVec3("_Light.position", lightMeshRenderer->transform[3].toVec3());
 		litShader.setVec4("_Light.color", light.color);
 
 		litShader.setVec4("_Material.color", material.color);
@@ -274,34 +290,32 @@ int main() {
 		litShader.setFloat("_Material.specularK", material.specularK);
 		litShader.setFloat("_Material.shininess", material.shininess);
 
-		drawMesh(litShader, splineMesh, splineTransform, GL_TRIANGLES);
-
-		for (size_t i = 0; i < NUM_CUBES; i++)
-		{
-			drawMesh(litShader, cubeMesh, cubeTransforms[i]);
-		}
-
 		unlitShader.use();
 		unlitShader.setMat4("_ViewProjection", viewProjection);
 		unlitShader.setVec4("_Color", light.color);
-		drawMesh(unlitShader, sphereMesh, light.transform);
 
-		//Render pickable meshes to object picking framebuffer
-		pickingFramebuffer.bind();
-		glClearColor(0, 0, 0, 0);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		glViewport(0,0,pickingFramebuffer.getWidth(),pickingFramebuffer.getHeight());
-
-		pickingShader.use();
-
-		for (size_t i = 0; i < NUM_CUBES; i++)
+		for (size_t i = 0; i < NUM_RENDERERS; i++)
 		{
-			pickingShader.setInt("_ObjectIndex", i+1);
-			pickingShader.setMat4("_MVP", viewProjection * cubeTransforms[i]);
-			drawMesh(pickingShader, cubeMesh, cubeTransforms[i]);
+			drawMesh(*meshRenderers[i].shader, *meshRenderers[i].mesh, meshRenderers[i].transform);
 		}
-		pickingFramebuffer.unbind();
-		glViewport(0, 0, SCREEN_WIDTH,SCREEN_HEIGHT);
+	
+		//Render pickable meshes to object picking framebuffer
+		{
+			pickingFramebuffer.bind();
+			glClearColor(0, 0, 0, 0);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			glViewport(0, 0, pickingFramebuffer.getWidth(), pickingFramebuffer.getHeight());
+
+			pickingShader.use();
+			for (size_t i = 0; i < NUM_RENDERERS; i++)
+			{
+				pickingShader.setInt("_ObjectIndex", i + 1);
+				pickingShader.setMat4("_MVP", viewProjection * meshRenderers[i].transform);
+				drawMesh(pickingShader, cubeMesh, meshRenderers[i].transform);
+			}
+			pickingFramebuffer.unbind();
+			glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+		}
 
 		//Render UI
 		{
@@ -312,7 +326,6 @@ int main() {
 			ImGui::Begin("Settings");
 			if (ImGui::CollapsingHeader("Light")) {
 				ImGui::ColorEdit4("Color", &light.color.x);
-				ImGui::DragFloat3("Position", &light.transform.position.x, 0.2f);
 			}
 			if (ImGui::CollapsingHeader("Material")) {
 				ImGui::SliderFloat("Ambient K", &material.ambientK,0.0f,1.0f);
@@ -377,7 +390,7 @@ int main() {
 				ImGui::Begin("Hierarchy");
 				
 				int node_clicked = -1;
-				for (int i = 0; i < NUM_CUBES; i++)
+				for (int i = 0; i < NUM_RENDERERS; i++)
 				{
 					ImGuiTreeNodeFlags node_flags = base_flags;
 					
@@ -386,10 +399,10 @@ int main() {
 						node_flags |= ImGuiTreeNodeFlags_Selected;
 
 					node_flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
-					ImGui::TreeNodeEx((void*)(intptr_t)i, node_flags, "Cube %d", i);
+					ImGui::TreeNodeEx((void*)(intptr_t)i, node_flags, "Mesh %d", i);
 					if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()){
 						node_clicked = i;
-						selectedCube = i;
+						selectionIndex = i;
 					}
 				}
 				if (node_clicked != -1)
@@ -409,22 +422,22 @@ int main() {
 				ImGui::Begin("Inspector");
 				ImGui::Text("Name");
 				ImGui::SameLine();
-				ImGui::Text("Cube %d", selectedCube);
+				ImGui::Text("Cube %d", selectionIndex);
 				if (ImGui::CollapsingHeader("Transform")) {
 					//Individual transform
 					float matrixTranslation[3], matrixRotation[3], matrixScale[3];
-					ImGuizmo::DecomposeMatrixToComponents(&cubeTransforms[selectedCube][0][0], matrixTranslation, matrixRotation, matrixScale);
+					ImGuizmo::DecomposeMatrixToComponents(&meshRenderers[selectionIndex].transform[0][0], matrixTranslation, matrixRotation, matrixScale);
 					ImGui::DragFloat3("Translation", matrixTranslation, 0.05f);
 					ImGui::DragFloat3("Rotation", matrixRotation, 1.0f);
 					ImGui::DragFloat3("Scale", matrixScale, 0.05f);
-					ImGuizmo::RecomposeMatrixFromComponents(matrixTranslation, matrixRotation, matrixScale, &cubeTransforms[selectedCube][0][0]);
+					ImGuizmo::RecomposeMatrixFromComponents(matrixTranslation, matrixRotation, matrixScale, &meshRenderers[selectionIndex].transform[0][0]);
 				}
 				
 				ImGui::End();
 			}
 			
 
-			TransformGizmo(&view[0][0], &projection[0][0], &cubeTransforms[selectedCube][0][0], appTransformSettings);
+			TransformGizmo(&view[0][0], &projection[0][0], &meshRenderers[selectionIndex].transform[0][0], appTransformSettings);
 
 			ImGui::Render();
 			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -516,8 +529,8 @@ void onMouseButtonPressed(GLFWwindow* window, int button, int action, int mods)
 		mouseY = SCREEN_HEIGHT - mouseY;
 		ew::PixelInfo pixelInfo = mouseSelectFramebuffer->readPixel((unsigned int)mouseX, (unsigned int)mouseY);
 		if (pixelInfo.r > 0) {
-			selectedCube = pixelInfo.r - 1;
-			selection_mask = (1 << selectedCube);
+			selectionIndex = pixelInfo.r - 1;
+			selection_mask = (1 << selectionIndex);
 		}
 	}
 }
