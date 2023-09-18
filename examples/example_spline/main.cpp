@@ -170,7 +170,7 @@ const int NUM_RENDERERS = 8;
 MeshRenderer meshRenderers[NUM_RENDERERS];
 
 bool particleBillboard = true;
-const int MAX_PARTICLES = 100000;
+const int MAX_PARTICLES = 10000;
 
 int main() {
 	printf("Initializing...");
@@ -307,7 +307,7 @@ int main() {
 			drawMesh(*meshRenderers[i].shader, *meshRenderers[i].mesh, meshRenderers[i].transform);
 		}
 
-		particleSystem.draw(deltaTime, &particleShader, view, projection);
+		particleSystem.draw(deltaTime, &particleShader, view, projection, camera.position);
 		
 		//Render pickable meshes to object picking framebuffer
 		{

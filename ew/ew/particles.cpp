@@ -82,9 +82,8 @@ namespace ew {
 			p.color = ew::Vec4(ew::RandomRange(0, 1.0f), ew::RandomRange(0, 1.0f), ew::RandomRange(0, 1.0f), 1.0f);
 		}
 	}
-	void ParticleSystem::draw(float deltaTime, ew::Shader* shader, const ew::Mat4& view, const ew::Mat4& projection)
+	void ParticleSystem::draw(float deltaTime, ew::Shader* shader, const ew::Mat4& view, const ew::Mat4& projection, const ew::Vec3& cameraPos)
 	{
-		ew::Vec3 cameraPos = view[3].toVec3();
 		//Update
 		m_particleCount = 0;
 		for (size_t i = 0; i < m_capacity; i++)
@@ -112,6 +111,10 @@ namespace ew {
 		shader->setMat4("_View", view);
 		shader->setMat4("_Projection", projection);
 
+		glDisable(GL_DEPTH_TEST);
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
 		glBindVertexArray(m_vao);
 
 		glBindBuffer(GL_ARRAY_BUFFER, m_positionVBO);
@@ -123,5 +126,8 @@ namespace ew {
 		glBufferSubData(GL_ARRAY_BUFFER, 0, m_particleCount * sizeof(float) * 4, m_particleColorsBuffer.data());
 
 		glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, m_particleCount);
+
+		glEnable(GL_DEPTH_TEST);
+		glDisable(GL_BLEND);
 	}
 }

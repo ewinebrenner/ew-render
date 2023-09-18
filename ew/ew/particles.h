@@ -20,7 +20,7 @@ namespace ew {
 		ParticleSystem(unsigned int capacity);
 		inline void setBillboarding(bool v) { m_billboard = v; }
 		inline int getNumParticles()const { return m_particleCount; }
-		void draw(float deltaTime, Shader* shader, const ew::Mat4& view, const ew::Mat4& projection);
+		void draw(float deltaTime, Shader* shader, const ew::Mat4& view, const ew::Mat4& projection, const ew::Vec3& cameraPos);
 	private:
 		unsigned int m_vao;
 		unsigned int m_geometryVBO;
