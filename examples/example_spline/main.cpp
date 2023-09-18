@@ -16,6 +16,8 @@
 #include <ew/procGen.h>
 #include <ew/ewMath/transformations.h>
 #include <ew/ewMath/splines.h>
+#include <ew/particles.h>
+
 
 
 #include <ew/external/imguizmo/ImGuizmo.h>
@@ -167,6 +169,9 @@ struct MeshRenderer {
 const int NUM_RENDERERS = 8;
 MeshRenderer meshRenderers[NUM_RENDERERS];
 
+bool particleBillboard = true;
+const int MAX_PARTICLES = 100000;
+
 int main() {
 	printf("Initializing...");
 	if (!glfwInit()) {
@@ -216,6 +221,7 @@ int main() {
 	ew::Shader unlitShader("assets/unlit.vert", "assets/unlit.frag");
 	ew::Shader litShader("assets/lit.vert", "assets/lit.frag");
 	ew::Shader pickingShader("assets/objectPicking.vert", "assets/objectPicking.frag");
+	ew::Shader particleShader("assets/particle.vert", "assets/particle.frag");
 
 	unsigned int texture = ew::loadTexture("assets/bricks_color.jpg", GL_REPEAT, GL_LINEAR_MIPMAP_LINEAR);
 
@@ -240,6 +246,8 @@ int main() {
 		meshRenderers[i].shader = &litShader;
 	}
 
+	ew::ParticleSystem particleSystem(MAX_PARTICLES);
+	
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
 		processInput(window);
@@ -298,7 +306,9 @@ int main() {
 		{
 			drawMesh(*meshRenderers[i].shader, *meshRenderers[i].mesh, meshRenderers[i].transform);
 		}
-	
+
+		particleSystem.draw(deltaTime, &particleShader, view, projection);
+		
 		//Render pickable meshes to object picking framebuffer
 		{
 			pickingFramebuffer.bind();
@@ -358,6 +368,12 @@ int main() {
 				if (dirty) {
 					createCubicBezierTrackMesh(controlPoints[0], controlPoints[1], controlPoints[2], controlPoints[3], splineSegments, splineWidth,&splineMeshData);
 					splineMesh.load(splineMeshData);
+				}
+			}
+			if (ImGui::CollapsingHeader("Particles")) {
+				ImGui::Text("Num Particles: %d", particleSystem.getNumParticles());
+				if (ImGui::Checkbox("Billboard", &particleBillboard)) {
+					particleSystem.setBillboarding(particleBillboard);
 				}
 			}
 			
@@ -562,10 +578,9 @@ void TransformSettingsPanel(AppTransformSettings& settings) {
 		if (ImGui::RadioButton("World", settings.mCurrentGizmoMode == ImGuizmo::WORLD))
 			settings.mCurrentGizmoMode = ImGuizmo::WORLD;
 	}
-	if (ImGui::IsKeyPressed(ImGuiKey_LeftCtrl))
-		settings.useSnap = !settings.useSnap;
-	ImGui::Checkbox("Snap", &settings.useSnap);
-	ImGui::SameLine();
+	settings.useSnap = ImGui::IsKeyDown(ImGuiKey_LeftCtrl);
+	//ImGui::Checkbox("Snap", &settings.useSnap);
+	//ImGui::SameLine();
 
 	switch (settings.mCurrentGizmoOperation)
 	{
