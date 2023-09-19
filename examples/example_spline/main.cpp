@@ -17,7 +17,7 @@
 #include <ew/ewMath/transformations.h>
 #include <ew/ewMath/splines.h>
 #include <ew/particles.h>
-
+#include <ew/fpsCounter.h>
 
 
 #include <ew/external/imguizmo/ImGuizmo.h>
@@ -171,6 +171,7 @@ MeshRenderer meshRenderers[NUM_RENDERERS];
 
 bool particleBillboard = true;
 const int MAX_PARTICLES = 10000;
+ew::FPSCounter fpsCounter(0.5f);
 
 int main() {
 	printf("Initializing...");
@@ -260,6 +261,8 @@ int main() {
 		deltaTime = time - prevTime;
 		prevTime = time;
 
+		fpsCounter.update(deltaTime);
+
 		//Update camera forward vector
 		float yawRad = ew::Radians(cameraController.yaw);
 		float pitchRad = ew::Radians(cameraController.pitch);
@@ -334,6 +337,7 @@ int main() {
 			ImGui::NewFrame();
 
 			ImGui::Begin("Settings");
+			ImGui::Text("FPS:%f", fpsCounter.getFPS());
 			if (ImGui::CollapsingHeader("Light")) {
 				ImGui::ColorEdit4("Color", &light.color.x);
 			}

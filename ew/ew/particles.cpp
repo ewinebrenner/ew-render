@@ -104,7 +104,7 @@ namespace ew {
 
 			m_particleCount++;
 		}
-		std::sort(&m_particles[0], &m_particles[m_capacity-1]);
+		std::sort(m_particles.begin(), m_particles.end());
 		//Draw
 		shader->use();
 		shader->setInt("_Billboard", m_billboard ? 1 : 0);
