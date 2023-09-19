@@ -42,26 +42,10 @@ void TransformSettingsPanel(AppTransformSettings& settings);
 int SCREEN_WIDTH = 1920;
 int SCREEN_HEIGHT = 1080;
 
-struct Camera {
-	float fov = 60.0f;
-	ew::Vec3 position = ew::Vec3(0.0f, 0.0f, 10.0f);
-	ew::Vec3 target = ew::Vec3(0.0f, 0.0f, 1.0f);
-	bool orthographic = false;
-	float orthographicHeight = 10.0f;
-};
-struct CameraController {
-	float moveSpeed = 5.0f;
-	float yaw = -90.0f;
-	float pitch = 0.0f;
-	double prevMouseX, prevMouseY;
-	bool firstMouse = true;
-	float mouseSensitivity = 0.1f;
-};
-
 ew::Transform splineTransform;
 
-Camera camera;
-CameraController cameraController;
+ew::Camera camera;
+ew::CameraController cameraController;
 
 struct Light {
 	ew::Vec4 color = ew::Vec4(1.0f, 1.0f, 1.0f, 1.0f);
@@ -200,6 +184,9 @@ int main() {
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
 	ImGui_ImplOpenGL3_Init();
 
+	camera.m_position = ew::Vec3(0.0f, 0.0f, -10.0f);
+	cameraController.yaw = 0.0f;
+
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
 	glPointSize(3);
@@ -262,6 +249,7 @@ int main() {
 		prevTime = time;
 
 		fpsCounter.update(deltaTime);
+		camera.m_aspectRatio = (float)SCREEN_WIDTH / SCREEN_HEIGHT;
 
 		//Update camera forward vector
 		float yawRad = ew::Radians(cameraController.yaw);
@@ -273,13 +261,11 @@ int main() {
 		forward.z = sinf(yawRad) * cosf(pitchRad);
 		forward = ew::Normalize(forward);
 
-		camera.target = camera.position + forward;
-
+		camera.m_target = camera.m_position + forward;
+		
 		//Construct View and Projection
-		ew::Mat4 view = ew::LookAtMatrix(camera.position, camera.target, ew::Vec3(0, 1, 0));
-		ew::Mat4 projection = camera.orthographic ? 
-			ew::OrthographicMatrix(camera.orthographicHeight, (float)SCREEN_WIDTH / SCREEN_HEIGHT, 0.01f,1000.0f) :
-			ew::PerspectiveMatrix(ew::Radians(camera.fov), (float)SCREEN_WIDTH / SCREEN_HEIGHT, 0.01f, 1000.0f);
+		ew::Mat4 view = ew::GetViewMatrix(camera);
+		ew::Mat4 projection = ew::GetProjectionMatrix(camera);
 
 		ew::Mat4 viewProjection = projection * view;
 
@@ -291,7 +277,7 @@ int main() {
 		glBindTexture(GL_TEXTURE_2D, texture);
 		litShader.setInt("_Texture", 0);
 
-		litShader.setVec3("_EyePos", camera.position);
+		litShader.setVec3("_EyePos", camera.m_position);
 		litShader.setVec3("_Light.position", lightMeshRenderer->transform[3].toVec3());
 		litShader.setVec4("_Light.color", light.color);
 
@@ -310,7 +296,7 @@ int main() {
 			drawMesh(*meshRenderers[i].shader, *meshRenderers[i].mesh, meshRenderers[i].transform);
 		}
 
-		particleSystem.draw(deltaTime, &particleShader, view, projection, camera.position);
+		particleSystem.draw(deltaTime, &particleShader, view, projection, camera.m_position);
 		
 		//Render pickable meshes to object picking framebuffer
 		{
@@ -349,14 +335,14 @@ int main() {
 			}
 
 			if (ImGui::CollapsingHeader("Camera")) {
-				if (camera.orthographic) {
-					ImGui::DragFloat("Height", &camera.orthographicHeight, 0.5f);
+				if (camera.m_orthographic) {
+					ImGui::DragFloat("Height", &camera.m_orthographicSize, 0.5f);
 				}
 				else {
-					ImGui::DragFloat("FOV", &camera.fov, 1.0f, 0.0f, 180.0f);
+					ImGui::DragFloat("FOV", &camera.m_fov, 1.0f, 0.0f, 180.0f);
 				}
 
-				ImGui::Checkbox("Orthographic", &camera.orthographic);
+				ImGui::Checkbox("Orthographic", &camera.m_orthographic);
 				ImGui::DragFloat("Move speed", &cameraController.moveSpeed, 0.1f);
 			}
 			if (ImGui::CollapsingHeader("Spline")) {
@@ -385,7 +371,7 @@ int main() {
 
 			//IMGUIZMO
 
-			ImGuizmo::SetOrthographic(camera.orthographic);
+			ImGuizmo::SetOrthographic(camera.m_orthographic);
 			ImGuizmo::BeginFrame();
 		//	ImGuizmo::DrawGrid(&view[0][0], &projection[0][0], &ew::IdentityMatrix()[0][0], 100.f);
 
@@ -468,6 +454,16 @@ int main() {
 	printf("Shutting down...");
 }
 
+float getInputAxis(GLFWwindow* window, int positiveKey, int negativeKey) {
+	float axisValue = 0.0f;
+	if (glfwGetKey(window, positiveKey)) {
+		axisValue++;
+	}
+	if (glfwGetKey(window, negativeKey)) {
+		axisValue--;
+	}
+	return axisValue;
+}
 void processInput(GLFWwindow* window) {
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE)) {
 		glfwSetWindowShouldClose(window, true);
@@ -478,29 +474,13 @@ void processInput(GLFWwindow* window) {
 	if (glfwGetInputMode(window, GLFW_CURSOR) != GLFW_CURSOR_DISABLED)
 		return;
 
-	ew::Vec3 forward = ew::Normalize(camera.target - camera.position);
-	ew::Vec3 right = ew::Normalize(ew::Cross(forward, ew::Vec3(0, 1, 0)));
-	ew::Vec3 up = ew::Normalize(ew::Cross(forward,right));
-	if (glfwGetKey(window,GLFW_KEY_W)) {
-		camera.position += forward * cameraController.moveSpeed * deltaTime;
-	}
-	if (glfwGetKey(window, GLFW_KEY_S)) {
-		camera.position -= forward * cameraController.moveSpeed * deltaTime;
-	}
-	if (glfwGetKey(window, GLFW_KEY_D)) {
-		camera.position += right * cameraController.moveSpeed * deltaTime;
-	}
-	if (glfwGetKey(window, GLFW_KEY_A)) {
-		camera.position -= right * cameraController.moveSpeed * deltaTime;
-	}
-	if (glfwGetKey(window, GLFW_KEY_Q)) {
-		camera.position += up * cameraController.moveSpeed * deltaTime;
-	}
-	if (glfwGetKey(window, GLFW_KEY_E)) {
-		camera.position -= up * cameraController.moveSpeed * deltaTime;
-	}
+	ew::Vec3 inputValues = ew::Vec3(
+		getInputAxis(window, GLFW_KEY_D, GLFW_KEY_A),
+		getInputAxis(window, GLFW_KEY_Q, GLFW_KEY_E),
+		getInputAxis(window, GLFW_KEY_W, GLFW_KEY_S)
+	);
 
-
+	ew::MoveFlyCamera(&cameraController, &camera, inputValues, deltaTime);
 }
 
 void onCursorMoved(GLFWwindow* window, double xpos, double ypos)
@@ -508,24 +488,7 @@ void onCursorMoved(GLFWwindow* window, double xpos, double ypos)
 	if (glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_NORMAL)
 		return;
 
-	if (cameraController.firstMouse) {
-		cameraController.prevMouseX = xpos;
-		cameraController.prevMouseY = ypos;
-		cameraController.firstMouse = false;
-	}
-	float deltaX = xpos - cameraController.prevMouseX;
-	float deltaY = ypos - cameraController.prevMouseY;
-	cameraController.yaw += deltaX * cameraController.mouseSensitivity;
-	cameraController.pitch += -deltaY * cameraController.mouseSensitivity;
-	if (cameraController.pitch < -89.9f) {
-		cameraController.pitch = -89.9f;
-	}
-	else if (cameraController.pitch > 89.9f) {
-		cameraController.pitch = 89.9f;
-	}
-
-	cameraController.prevMouseX = xpos;
-	cameraController.prevMouseY = ypos;
+	ew::AimFlyCamera(&cameraController, xpos, ypos);
 }
 
 void onMouseButtonPressed(GLFWwindow* window, int button, int action, int mods)

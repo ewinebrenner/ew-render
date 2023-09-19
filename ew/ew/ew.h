@@ -6,3 +6,4 @@
 #include "mesh.h"
 #include "transform.h"
 #include "framebuffer.h"
+#include "camera.h"
