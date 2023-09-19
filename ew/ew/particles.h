@@ -9,18 +9,21 @@ namespace ew {
 		float size;
 		ew::Vec4 color;
 		ew::Vec3 velocity;
-		float cameraDistance = -1.0f;
+		float m_cameraDistance = -1.0f;
 		bool operator<(Particle& that) {
 			// Sort in reverse order : far particles drawn first.
-			return this->cameraDistance > that.cameraDistance;
+			return this->m_cameraDistance > that.m_cameraDistance;
 		}
 	};
 	class ParticleSystem {
 	public:
 		ParticleSystem(unsigned int capacity);
-		inline void setBillboarding(bool v) { m_billboard = v; }
 		inline int getNumParticles()const { return m_particleCount; }
 		void draw(float deltaTime, Shader* shader, const ew::Mat4& view, const ew::Mat4& projection, const ew::Vec3& cameraPos);
+		void restart();
+
+		bool m_billboard = true;
+		bool m_enabled = true;
 	private:
 		unsigned int m_vao;
 		unsigned int m_geometryVBO;
@@ -31,6 +34,5 @@ namespace ew {
 		std::vector<Particle> m_particles;
 		std::vector<float> m_particlePositionsBuffer; //4 floats per particle(position.xyz,size)
 		std::vector<float> m_particleColorsBuffer; //4 floats per particle(rgba)
-		bool m_billboard = true;
 	};
 }

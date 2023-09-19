@@ -63,6 +63,9 @@ namespace ew {
 
 		//Test of initial values
 		//TODO: Move these to public "emit" function
+		restart();
+	}
+	void ParticleSystem::restart() {
 		for (size_t i = 0; i < m_capacity; i++)
 		{
 			Particle& p = m_particles[i];
@@ -76,8 +79,8 @@ namespace ew {
 
 			float theta = ew::PI * 2.0 * (float)col / numColumns;
 			float phi = ew::PI * (float)row / numRows;
-			p.position = ew::Vec3(cosf(theta)*sinf(phi), cosf(phi), sinf(theta) * sinf(phi));
-			p.velocity = ew::Normalize(p.position)*0.2f;
+			p.position = ew::Vec3(cosf(theta) * sinf(phi), cosf(phi), sinf(theta) * sinf(phi));
+			p.velocity = ew::Normalize(p.position) * 0.2f;
 			p.size = 0.5f;
 			p.color = ew::Vec4(ew::RandomRange(0, 1.0f), ew::RandomRange(0, 1.0f), ew::RandomRange(0, 1.0f), 1.0f);
 		}
@@ -90,7 +93,7 @@ namespace ew {
 		{
 			Particle& p = m_particles[i];
 			p.position += p.velocity * deltaTime;
-			p.cameraDistance = ew::Magnitude(p.position - cameraPos);
+			p.m_cameraDistance = ew::Magnitude(p.position - cameraPos);
 
 			m_particlePositionsBuffer[m_particleCount * 4] = p.position.x;
 			m_particlePositionsBuffer[m_particleCount * 4 + 1] = p.position.y;
@@ -104,14 +107,14 @@ namespace ew {
 
 			m_particleCount++;
 		}
-		std::sort(m_particles.begin(), m_particles.end());
+		//std::sort(m_particles.begin(), m_particles.end());
 		//Draw
 		shader->use();
 		shader->setInt("_Billboard", m_billboard ? 1 : 0);
 		shader->setMat4("_View", view);
 		shader->setMat4("_Projection", projection);
 
-		glDisable(GL_DEPTH_TEST);
+		//glDisable(GL_DEPTH_TEST);
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
@@ -127,7 +130,8 @@ namespace ew {
 
 		glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, m_particleCount);
 
-		glEnable(GL_DEPTH_TEST);
+		//glEnable(GL_DEPTH_TEST);
+	
 		glDisable(GL_BLEND);
 	}
 }

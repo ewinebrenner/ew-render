@@ -4,7 +4,9 @@ in vec4 Color;
 in vec2 UV;
 void main(){
 	vec2 uv = UV;
-	float a = 1.0-smoothstep(0.4,0.5,distance(uv,vec2(0.5)));
-	FragColor = vec4(Color.rgb,a * Color.a);
+	float a = step(distance(uv,vec2(0.5)),0.5);
+	if (a < 0.5)
+		discard;
+	FragColor = vec4(Color.rgba);
 	//FragColor = Color;
 }

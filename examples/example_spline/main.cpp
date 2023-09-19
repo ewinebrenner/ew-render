@@ -39,10 +39,8 @@ void onWindowResized(GLFWwindow* window, int width, int height);
 void TransformGizmo(const float* view, const float* projection, float* matrix, const AppTransformSettings& settings);
 void TransformSettingsPanel(AppTransformSettings& settings);
 
-int SCREEN_WIDTH = 1920;
-int SCREEN_HEIGHT = 1080;
-
-ew::Transform splineTransform;
+int SCREEN_WIDTH = 1280;
+int SCREEN_HEIGHT = 720;
 
 ew::Camera camera;
 ew::CameraController cameraController;
@@ -153,7 +151,6 @@ struct MeshRenderer {
 const int NUM_RENDERERS = 8;
 MeshRenderer meshRenderers[NUM_RENDERERS];
 
-bool particleBillboard = true;
 const int MAX_PARTICLES = 10000;
 ew::FPSCounter fpsCounter(0.5f);
 
@@ -184,12 +181,12 @@ int main() {
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
 	ImGui_ImplOpenGL3_Init();
 
-	camera.m_position = ew::Vec3(0.0f, 0.0f, -10.0f);
-	cameraController.yaw = 0.0f;
+	camera.m_position = ew::Vec3(0.0f, 0.0f, 10.0f);
 
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
 	glPointSize(3);
+	
 	//glEnable(GL_CULL_FACE);
 	//glCullFace(GL_BACK);
 
@@ -240,7 +237,7 @@ int main() {
 		glfwPollEvents();
 		processInput(window);
 
-		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+		glClearColor(camera.m_bgColor.x, camera.m_bgColor.y, camera.m_bgColor.z, camera.m_bgColor.w);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		//The current time in seconds this frame
@@ -296,7 +293,9 @@ int main() {
 			drawMesh(*meshRenderers[i].shader, *meshRenderers[i].mesh, meshRenderers[i].transform);
 		}
 
-		particleSystem.draw(deltaTime, &particleShader, view, projection, camera.m_position);
+		if (particleSystem.m_enabled) {
+			particleSystem.draw(deltaTime, &particleShader, view, projection, camera.m_position);
+		}
 		
 		//Render pickable meshes to object picking framebuffer
 		{
@@ -310,7 +309,7 @@ int main() {
 			{
 				pickingShader.setInt("_ObjectIndex", i + 1);
 				pickingShader.setMat4("_MVP", viewProjection * meshRenderers[i].transform);
-				drawMesh(pickingShader, cubeMesh, meshRenderers[i].transform);
+				drawMesh(pickingShader, *meshRenderers[i].mesh, meshRenderers[i].transform);
 			}
 			pickingFramebuffer.unbind();
 			glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
@@ -335,6 +334,7 @@ int main() {
 			}
 
 			if (ImGui::CollapsingHeader("Camera")) {
+				ImGui::ColorEdit4("Background Color", &camera.m_bgColor[0]);
 				if (camera.m_orthographic) {
 					ImGui::DragFloat("Height", &camera.m_orthographicSize, 0.5f);
 				}
@@ -362,8 +362,10 @@ int main() {
 			}
 			if (ImGui::CollapsingHeader("Particles")) {
 				ImGui::Text("Num Particles: %d", particleSystem.getNumParticles());
-				if (ImGui::Checkbox("Billboard", &particleBillboard)) {
-					particleSystem.setBillboarding(particleBillboard);
+				ImGui::Checkbox("Enabled", &particleSystem.m_enabled);
+				ImGui::Checkbox("Billboard", &particleSystem.m_billboard);
+				if (ImGui::Button("Restart")) {
+					particleSystem.restart();
 				}
 			}
 			

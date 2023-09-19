@@ -12,6 +12,7 @@ namespace ew {
 		float m_aspectRatio = 1.777f;
 		float m_nearPlane = 0.1f;
 		float m_farPlane = 1000.0f;
+		ew::Vec4 m_bgColor = ew::Vec4(0.1f,0.12f,0.15f,1.0f);
 	};
 
 	struct CameraController {
