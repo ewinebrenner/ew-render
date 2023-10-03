@@ -16,8 +16,11 @@
 #include <ew/ewMath/transformations.h>
 #include <ew/procGen.h>
 
-const int SCREEN_WIDTH = 1080;
-const int SCREEN_HEIGHT = 1080;
+const int SCREEN_WIDTH = 720;
+const int SCREEN_HEIGHT = 720;
+
+const int NUM_CUBES = 4;
+ew::Transform cubeTransforms[NUM_CUBES];
 
 int main() {
 
@@ -52,41 +55,50 @@ int main() {
 	ew::createCube(0.5f, &cubeMeshData);
 	ew::Mesh cubeMesh;
 	cubeMesh.load(cubeMeshData);
-	ew::Transform cubeTransform;
 
 	ew::Shader shader("assets/unlit.vert", "assets/unlit.frag");
-	unsigned int texture = ew::loadTexture("assets/bricks_color.jpg",GL_REPEAT,GL_LINEAR);
+	shader.use();
 
+	cubeMesh.bind();
+
+	for (size_t i = 0; i < NUM_CUBES; i++)
+	{
+		cubeTransforms[i].position.x = i % (NUM_CUBES/2) - 0.5;
+		cubeTransforms[i].position.y = i / (NUM_CUBES/2) - 0.5;
+	}
 
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
 		glClearColor(0.3f, 0.4f, 0.9f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		shader.use();
+		for (size_t i = 0; i < NUM_CUBES; i++)
+		{
+			//Construct model matrix
+			shader.setMat4("_Model", cubeTransforms[i].getModelMatrix());
 
-		//Construct model matrix
-		shader.setMat4("_Model", cubeTransform.getModelMatrix());
-
-		//Draw cube
-		cubeMesh.bind();
-		glDrawElements(GL_TRIANGLES, cubeMesh.getNumIndices(), GL_UNSIGNED_INT, NULL);
-
+			glDrawElements(GL_TRIANGLES, cubeMesh.getNumIndices(), GL_UNSIGNED_INT, NULL);
+		}
+		
 		//Render UI
 		{
 			ImGui_ImplGlfw_NewFrame();
 			ImGui_ImplOpenGL3_NewFrame();
 			ImGui::NewFrame();
 
-			ImGui::Begin("Settings");
-			ImGui::DragFloat3("Position", &cubeTransform.position.x, 0.1f);
-			ImGui::DragFloat3("Rotation", &cubeTransform.rotation.x, 1.0f);
-			ImGui::DragFloat3("Scale", &cubeTransform.scale.x, 0.1f);
-			if (ImGui::Button("Reset")) {
-				cubeTransform.position = ew::Vec3(0.0f);
-				cubeTransform.rotation = ew::Vec3(0.0f);
-				cubeTransform.scale = ew::Vec3(1.0f);
+			ImGui::Begin("Transformations");
+
+			for (size_t i = 0; i < NUM_CUBES; i++)
+			{
+				ImGui::PushID(i);
+				if (ImGui::CollapsingHeader("Transform")) {
+					ImGui::DragFloat3("Position", &cubeTransforms[i].position.x, 0.05f);
+					ImGui::DragFloat3("Rotation", &cubeTransforms[i].rotation.x, 1.0f);
+					ImGui::DragFloat3("Scale", &cubeTransforms[i].scale.x, 0.05f);
+				}
+				ImGui::PopID();
 			}
+
 			ImGui::End();
 
 			ImGui::Render();
