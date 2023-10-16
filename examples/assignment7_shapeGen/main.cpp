@@ -68,7 +68,7 @@ struct Settings {
 	float torusOuterRadius = 1.0f;
 
 	ew::Vec3 bgColor = ew::Vec3(0.1f);
-
+	ew::Vec3 lightDir = ew::Vec3(0, 1, 0);
 }settings;
 
 void drawMesh(const ew::Shader& shader, const ew::Mesh& mesh, const ew::Transform& transform, bool drawPoints) {
@@ -170,7 +170,7 @@ int main() {
 		ew::Mat4 viewProjection = projection * view;
 		shader.use();
 		shader.setMat4("_ViewProjection", viewProjection);
-
+		shader.setVec3("_LightDir", settings.lightDir);
 		shader.setInt("_DebugMode", settings.debugModeIndex);
 		glActiveTexture(0);
 		glBindTexture(GL_TEXTURE_2D, texture);
@@ -208,7 +208,7 @@ int main() {
 			if (ImGui::Checkbox("Wireframe", &settings.wireFrame)) {
 				glPolygonMode(GL_FRONT_AND_BACK, settings.wireFrame ? GL_LINE : GL_FILL);
 			}
-			
+			ImGui::SliderFloat3("Light Dir", &settings.lightDir.x, -1.0f, 1.0f);
 
 			if (ImGui::CollapsingHeader("Bonus - Dynamic")) {
 				if (ImGui::DragInt("Sphere Segments", &settings.sphereSegments, 1, 3, 512) && settings.sphereSegments >= 3) {

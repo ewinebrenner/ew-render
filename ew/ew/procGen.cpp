@@ -222,8 +222,8 @@ namespace ew {
 				 v.pos.x = cos(theta) * (outerRadius + cos(phi) * innerRadius);
 				 v.pos.y = sin(theta) * (outerRadius + cos(phi) * innerRadius);
 				 v.pos.z = sin(phi) * innerRadius;
-				 v.normal = ew::Vec3(1);
-				 v.uv = ew::Vec2(1);
+				 v.normal = ew::Normalize(ew::Vec3(cos(theta), sin(theta), sin(phi)));
+				 v.uv = ew::Vec2((float)j / numRingSegments, (float)i / numRings);
 				 meshData->vertices.push_back(v);
 			 }
 		 }
