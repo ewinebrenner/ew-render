@@ -181,8 +181,8 @@ namespace ew {
 				 float u = (float)i / numSegments;
 				 float v = (float)j / numSegments;
 				 Vertex vertex;
-				 vertex.pos = Vec3(-size/2 + size * u, -size/2 + size * v, 0.0f);
-				 vertex.normal = Vec3(0, 0, 1.0f);
+				 vertex.pos = Vec3(-size/2 + size * u, 0.0f, -(-size / 2 + size * v));
+				 vertex.normal = Vec3(0.0f, 1.0f, 0.0f);
 				 vertex.uv = Vec2(u, v);
 				 mesh->vertices.push_back(vertex);
 			 }
@@ -201,6 +201,28 @@ namespace ew {
 				 mesh->indices.push_back(start + numColumns + 1);
 				 mesh->indices.push_back(start + 1);
 				 mesh->indices.push_back(start);
+			 }
+		 }
+	 }
+	 void createTorus(float innerRadius, float outerRadius, int numRings, int numRingSegments, MeshData* meshData)
+	 {
+		 meshData->vertices.clear();
+		 meshData->indices.clear();
+		 float phiStep = (ew::PI * 2) / numRingSegments;
+		 float thetaStep = (ew::PI * 2) / numRings;
+		 for (size_t i = 0; i < numRings; i++)
+		 {
+			 float theta = thetaStep * i;
+			 for (size_t j = 0; j < numRingSegments; j++)
+			 {
+				 float phi = phiStep * j;
+				 Vertex v;
+				 v.pos.x = cos(theta) * (outerRadius + cos(phi) * innerRadius);
+				 v.pos.y = sin(theta) * (outerRadius + cos(phi) * innerRadius);
+				 v.pos.z = sin(phi) * innerRadius;
+				 v.normal = ew::Vec3(1);
+				 v.uv = ew::Vec2(1);
+				 meshData->vertices.push_back(v);
 			 }
 		 }
 	 }

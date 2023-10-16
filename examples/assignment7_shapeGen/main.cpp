@@ -45,6 +45,7 @@ ew::Transform splineTransform;
 ew::Transform sphereTransform;
 ew::Transform cylinderTransform;
 ew::Transform planeTransform;
+ew::Transform torusTransform;
 
 Camera camera;
 CameraController cameraController;
@@ -53,9 +54,7 @@ float prevTime;
 float deltaTime;
 
 struct Settings {
-	const char* drawModeNames[2] = { "Triangles", "Points" };
-	int glDrawModes[2] = { GL_TRIANGLES,GL_POINTS };
-	int drawModeIndex = 0;
+	bool drawAsPoints;
 	bool wireFrame = false;
 	const char* debugModeNames[3] = { "Normals", "UVs", "Texture"};
 	int debugModeIndex = 0;
@@ -63,16 +62,23 @@ struct Settings {
 	int cylinderSegments = 16;
 	int planeSegments = 10;
 
+	int torusNumRings = 32;
+	int torusRingSegments = 32;
+	float torusInnerRadius = 0.25f;
+	float torusOuterRadius = 1.0f;
+
+	ew::Vec3 bgColor = ew::Vec3(0.1f);
+
 }settings;
 
-void drawMesh(const ew::Shader& shader, const ew::Mesh& mesh, const ew::Transform& transform, int drawMode) {
+void drawMesh(const ew::Shader& shader, const ew::Mesh& mesh, const ew::Transform& transform, bool drawPoints) {
 	mesh.bind();
 	shader.setMat4("_Model", transform.getModelMatrix());
-	if (drawMode == GL_TRIANGLES) {
-		glDrawElements(drawMode, mesh.getNumIndices(), GL_UNSIGNED_INT, NULL);
+	if (!drawPoints) {
+		glDrawElements(GL_TRIANGLES, mesh.getNumIndices(), GL_UNSIGNED_INT, NULL);
 	}
 	else {
-		glDrawArrays(drawMode, 0, mesh.getNumVertices());
+		glDrawArrays(GL_POINTS, 0, mesh.getNumVertices());
 	}
 }
 
@@ -109,30 +115,33 @@ int main() {
 
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-	ew::MeshData cubeMeshData, sphereMeshData, cylinderMeshData, planeMeshData;
+	ew::MeshData cubeMeshData, sphereMeshData, cylinderMeshData, planeMeshData, torusMeshData;
 	ew::createCube(0.5f,&cubeMeshData);
 	ew::createSphere(0.5f, settings.sphereSegments, &sphereMeshData);
 	ew::createCylinder(1.0f, 0.5f, settings.cylinderSegments, &cylinderMeshData);
 	ew::createPlane(1.0f, settings.planeSegments, &planeMeshData);
+	ew::createTorus(settings.torusInnerRadius,settings.torusOuterRadius,settings.torusNumRings, settings.torusRingSegments, &torusMeshData);
 
-	ew::Mesh cubeMesh, sphereMesh, cylinderMesh, planeMesh;
+	ew::Mesh cubeMesh, sphereMesh, cylinderMesh, planeMesh, torusMesh;
 	cubeMesh.load(cubeMeshData);
 	sphereMesh.load(sphereMeshData);
 	cylinderMesh.load(cylinderMeshData);
 	planeMesh.load(planeMeshData);
+	torusMesh.load(torusMeshData);
 
 	ew::Shader shader("assets/unlit.vert", "assets/unlit.frag");
 	unsigned int texture = ew::loadTexture("assets/bricks_color.jpg", GL_REPEAT, GL_LINEAR_MIPMAP_LINEAR);
 
 	sphereTransform.position = ew::Vec3(2.0f, 0.0f, 0.0f);
 	cylinderTransform.position = ew::Vec3(-2.0f, 0.0f, 0.0f);
-	planeTransform.position = ew::Vec3(4.0f, 0.0f, 0.0f);
+	planeTransform.position = ew::Vec3(4.0f, -0.5f, 0.0f);
+	torusTransform.position = ew::Vec3(7.0f, 0.0f, 0.0f);
 
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
 		processInput(window);
 
-		glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
+		glClearColor(settings.bgColor.x,settings.bgColor.y,settings.bgColor.z, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		//The current time in seconds this frame
@@ -168,11 +177,11 @@ int main() {
 
 		shader.setInt("_Texture", 0);
 
-		int drawMode = settings.glDrawModes[settings.drawModeIndex];
-		drawMesh(shader, cubeMesh, splineTransform, drawMode);
-		drawMesh(shader, sphereMesh, sphereTransform, drawMode);
-		drawMesh(shader, cylinderMesh, cylinderTransform, drawMode);
-		drawMesh(shader, planeMesh, planeTransform, drawMode);
+		drawMesh(shader, cubeMesh, splineTransform, settings.drawAsPoints);
+		drawMesh(shader, sphereMesh, sphereTransform, settings.drawAsPoints);
+		drawMesh(shader, cylinderMesh, cylinderTransform, settings.drawAsPoints);
+		drawMesh(shader, planeMesh, planeTransform, settings.drawAsPoints);
+		drawMesh(shader, torusMesh, torusTransform, settings.drawAsPoints);
 
 		//Render UI
 		{
@@ -181,25 +190,7 @@ int main() {
 			ImGui::NewFrame();
 
 			ImGui::Begin("Settings");
-			if (ImGui::Checkbox("Wireframe", &settings.wireFrame)) {
-				glPolygonMode(GL_FRONT_AND_BACK, settings.wireFrame ? GL_LINE : GL_FILL);
-			}
 
-			ImGui::Combo("Draw mode", &settings.drawModeIndex, settings.drawModeNames, IM_ARRAYSIZE(settings.drawModeNames));
-			ImGui::Combo("Debug mode", &settings.debugModeIndex, settings.debugModeNames, IM_ARRAYSIZE(settings.debugModeNames));
-
-			if (ImGui::DragInt("Sphere Segments", &settings.sphereSegments, 1, 3, 512)) {
-				ew::createSphere(0.5f, settings.sphereSegments, &sphereMeshData);
-				sphereMesh.load(sphereMeshData);
-			}
-			if (ImGui::DragInt("Cylinder Segments", &settings.cylinderSegments, 1, 3, 512)) {
-				ew::createCylinder(1.0f,0.5f,settings.cylinderSegments, &cylinderMeshData);
-				cylinderMesh.load(cylinderMeshData);
-			}
-			if (ImGui::DragInt("Plane Segments", &settings.planeSegments, 1, 1, 512)) {
-				ew::createPlane(1.0f, settings.planeSegments, &planeMeshData);
-				planeMesh.load(planeMeshData);
-			}
 			if (ImGui::CollapsingHeader("Camera")) {
 				if (camera.orthographic) {
 					ImGui::DragFloat("Height", &camera.orthographicHeight, 0.5f);
@@ -211,6 +202,39 @@ int main() {
 				ImGui::Checkbox("Orthographic", &camera.orthographic);
 				ImGui::DragFloat("Move speed", &cameraController.moveSpeed, 0.1f);
 			}
+			ImGui::ColorEdit3("BG Color", &settings.bgColor.x);
+			ImGui::Combo("Shading Mode", &settings.debugModeIndex, settings.debugModeNames, IM_ARRAYSIZE(settings.debugModeNames));
+			ImGui::Checkbox("Point Drawing", &settings.drawAsPoints);
+			if (ImGui::Checkbox("Wireframe", &settings.wireFrame)) {
+				glPolygonMode(GL_FRONT_AND_BACK, settings.wireFrame ? GL_LINE : GL_FILL);
+			}
+			
+
+			if (ImGui::CollapsingHeader("Bonus - Dynamic")) {
+				if (ImGui::DragInt("Sphere Segments", &settings.sphereSegments, 1, 3, 512) && settings.sphereSegments >= 3) {
+					ew::createSphere(0.5f, settings.sphereSegments, &sphereMeshData);
+					sphereMesh.load(sphereMeshData);
+				}
+				if (ImGui::DragInt("Cylinder Segments", &settings.cylinderSegments, 1, 3, 512) && settings.cylinderSegments >= 3) {
+					ew::createCylinder(1.0f, 0.5f, settings.cylinderSegments, &cylinderMeshData);
+					cylinderMesh.load(cylinderMeshData);
+				}
+				if (ImGui::DragInt("Plane Segments", &settings.planeSegments, 1, 1, 512) && settings.planeSegments >= 1) {
+					ew::createPlane(1.0f, settings.planeSegments, &planeMeshData);
+					planeMesh.load(planeMeshData);
+				}
+				bool torusChanged = false;
+				torusChanged |= (ImGui::DragFloat("Torus Inner Radius", &settings.torusInnerRadius, 0.05f));
+				torusChanged |= (ImGui::DragFloat("Torus Outer Radius", &settings.torusOuterRadius, 0.05f));
+				torusChanged |= (ImGui::DragInt("Torus Num Rings", &settings.torusNumRings, 1, 3, 512));
+				torusChanged |= (ImGui::DragInt("Torus Ring Segments", &settings.torusRingSegments, 1, 3, 512));
+				if (torusChanged) {
+					ew::createTorus(settings.torusInnerRadius, settings.torusOuterRadius, settings.torusNumRings, settings.torusRingSegments, &torusMeshData);
+					torusMesh.load(torusMeshData);
+				}
+			}
+			
+			
 			ImGui::End();
 
 			ImGui::Render();
