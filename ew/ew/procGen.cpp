@@ -208,12 +208,14 @@ namespace ew {
 	 {
 		 meshData->vertices.clear();
 		 meshData->indices.clear();
+
+		 //VERTICES
 		 float phiStep = (ew::PI * 2) / numRingSegments;
 		 float thetaStep = (ew::PI * 2) / numRings;
-		 for (size_t i = 0; i < numRings; i++)
+		 for (size_t i = 0; i <= numRings; i++)
 		 {
 			 float theta = thetaStep * i;
-			 for (size_t j = 0; j < numRingSegments; j++)
+			 for (size_t j = 0; j <= numRingSegments; j++)
 			 {
 				 float phi = phiStep * j;
 				 Vertex v;
@@ -223,6 +225,25 @@ namespace ew {
 				 v.normal = ew::Vec3(1);
 				 v.uv = ew::Vec2(1);
 				 meshData->vertices.push_back(v);
+			 }
+		 }
+		 //INDICES
+		 //Stack
+		 for (size_t stack = 0; stack <= numRings - 1; stack++)
+		 {
+			 //Slice
+			 for (size_t slice = 0; slice <= numRingSegments; slice++)
+			 {
+				 int i1 = stack + (slice * numRingSegments);
+				 int i2 = (stack + 1) + (slice * numRingSegments);
+				 int i3 = stack + ((slice + 1) * numRingSegments);
+				 int i4 = (stack + 1) + ((slice + 1) * numRingSegments);
+				 meshData->indices.push_back(i1);
+				 meshData->indices.push_back(i3);
+				 meshData->indices.push_back(i4);
+				 meshData->indices.push_back(i1);
+				 meshData->indices.push_back(i4);
+				 meshData->indices.push_back(i2);
 			 }
 		 }
 	 }
