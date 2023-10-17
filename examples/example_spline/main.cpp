@@ -154,6 +154,10 @@ void createCubicBezierTrackMesh(ew::Vec3 p0, ew::Vec3 p1, ew::Vec3 p2, ew::Vec3 
 	}
 }
 
+float cubeAnimT = 0.0f;
+float cubeSpeed = 1.0f;
+float cubeDir = 1.0f;
+
 int main() {
 	printf("Initializing...");
 	if (!glfwInit()) {
@@ -187,15 +191,16 @@ int main() {
 
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-	ew::MeshData splineMeshData, sphereMeshData;
+	ew::MeshData splineMeshData, sphereMeshData, cubeMeshData;
 	createCubicBezierTrackMesh(controlPoints[0], controlPoints[1], controlPoints[2], controlPoints[3], 32,splineWidth, &splineMeshData);
 
-
 	ew::createSphere(0.5f, 32, &sphereMeshData);
+	ew::createCube(0.5f, &cubeMeshData);
 
-	ew::Mesh splineMesh, sphereMesh;
+	ew::Mesh splineMesh, sphereMesh, cubeMesh;
 	splineMesh.load(splineMeshData);
 	sphereMesh.load(sphereMeshData);
+	cubeMesh.load(cubeMeshData);
 	
 	ew::Shader unlitShader("assets/unlit.vert", "assets/unlit.frag");
 	ew::Shader litShader("assets/lit.vert", "assets/lit.frag");
@@ -222,17 +227,27 @@ int main() {
 		deltaTime = time - prevTime;
 		prevTime = time;
 
+		//Ping pong
+		if (cubeAnimT > 1.0f && cubeDir > 0) {
+			cubeDir = -1.0f;
+		}
+		else if (cubeAnimT < 0.0f && cubeDir < 0) {
+			cubeDir = 1.0f;
+		}
+
+		cubeAnimT += deltaTime * cubeSpeed * cubeDir;
+
 		//Update camera forward vector
 		float yawRad = ew::Radians(cameraController.yaw);
 		float pitchRad = ew::Radians(cameraController.pitch);
 
-		ew::Vec3 forward;
-		forward.x = cosf(yawRad) * cosf(pitchRad);
-		forward.y = sinf(pitchRad);
-		forward.z = sinf(yawRad) * cosf(pitchRad);
-		forward = ew::Normalize(forward);
+		ew::Vec3 camForward;
+		camForward.x = cosf(yawRad) * cosf(pitchRad);
+		camForward.y = sinf(pitchRad);
+		camForward.z = sinf(yawRad) * cosf(pitchRad);
+		camForward = ew::Normalize(camForward);
 
-		camera.target = camera.position + forward;
+		camera.target = camera.position + camForward;
 
 		//Construct View and Projection
 		ew::Mat4 view = ew::LookAtMatrix(camera.position, camera.target, ew::Vec3(0, 1, 0));
@@ -262,10 +277,32 @@ int main() {
 
 		drawMesh(litShader, splineMesh, cubeTransform, GL_TRIANGLES);
 
-		unlitShader.use();
-		unlitShader.setMat4("_ViewProjection", viewProjection);
-		unlitShader.setVec4("_Color", light.color);
-		drawMesh(unlitShader, sphereMesh, light.transform);
+
+		//Draw cube
+		{
+			cubeMesh.bind();
+			ew::Vec3 pos = evaluateCubicBezier(controlPoints[0], controlPoints[1], controlPoints[2], controlPoints[3], cubeAnimT);
+			ew::Vec3 forward = ew::Normalize(evaluateCubicBezierTangent(controlPoints[0], controlPoints[1], controlPoints[2], controlPoints[3], cubeAnimT));
+			ew::Vec3 right = ew::Normalize(ew::Cross(forward, ew::Vec3(0, 1, 0)));
+			ew::Vec3 up = ew::Normalize(ew::Cross(right, forward));
+			pos += up * 0.125f;
+
+			ew::Mat4 rotation = ew::Mat4(
+				ew::Vec4(right, 0.0f),
+				ew::Vec4(up, 0.0f),
+				ew::Vec4(forward, 0.0f),
+				ew::Vec4(0.0f, 0.0f, 0.0f, 1.0f)
+			);
+			ew::Mat4 model = ew::TranslationMatrix(pos.x, pos.y, pos.z) * rotation * ew::ScaleMatrix(0.5f,0.5f,0.5f);
+			litShader.setMat4("_Model", model);
+			glDrawElements(GL_TRIANGLES, cubeMesh.getNumIndices(), GL_UNSIGNED_INT, NULL);
+		}
+		
+		//Draw light as sphere
+		//unlitShader.use();
+		//unlitShader.setMat4("_ViewProjection", viewProjection);
+		//unlitShader.setVec4("_Color", light.color);
+		//drawMesh(unlitShader, sphereMesh, light.transform);
 
 		//Render UI
 		{
@@ -310,6 +347,7 @@ int main() {
 					createCubicBezierTrackMesh(controlPoints[0], controlPoints[1], controlPoints[2], controlPoints[3], splineSegments, splineWidth,&splineMeshData);
 					splineMesh.load(splineMeshData);
 				}
+				ImGui::SliderFloat("Cube Speed", &cubeSpeed, 0.0f, 5.0f);
 			}
 			
 			ImGui::End();
