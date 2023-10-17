@@ -8,11 +8,11 @@ out Surface{
 	vec3 Normal;
 }vs_out;
 
-uniform float uTime;
 uniform mat4 _Model;
 
 void main(){
 	vs_out.UV = vUV;
 	vs_out.Normal = vNormal;
 	gl_Position = _Model * vec4(vPos,1.0);
+	gl_Position.z *= -1.0;
 }

@@ -22,4 +22,10 @@ namespace ew {
 	inline Vec3 Lerp(Vec3 a, Vec3 b, float t) {
 		return a + (b - a) * t;
 	}
+	inline Vec4 Lerp(Vec4 a, Vec4 b, float t) {
+		return a + (b - a) * t;
+	}
+	inline float InverseLerp(float a, float b, float v) {
+		return (v - a) / (b - a);
+	}
 }

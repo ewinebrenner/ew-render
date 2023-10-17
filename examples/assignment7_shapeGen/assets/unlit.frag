@@ -7,6 +7,7 @@ in Surface{
 }fs_in;
 uniform int _DebugMode;
 uniform sampler2D _Texture;
+uniform vec3 _LightDir = vec3(0,1,0);
 
 void main(){
 	vec2 uv = fs_in.UV;
@@ -16,5 +17,6 @@ void main(){
 		FragColor = vec4(uv.x,uv.y,0.0,1.0);
 	}else if (_DebugMode == 2){
 		FragColor = texture(_Texture,fs_in.UV).rgba;
+		FragColor.rgb *= max(dot(fs_in.Normal,normalize(-_LightDir)),0.0);
 	}
 }

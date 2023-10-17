@@ -167,6 +167,7 @@ int main() {
 
 			ImGui::Begin("Settings");
 			if (ImGui::CollapsingHeader("Camera")) {
+				ImGui::DragFloat3("Position", &camera.position.x, 0.1f);
 				if (camera.orthographic) {
 					ImGui::DragFloat("Height", &camera.orthographicHeight, 0.5f);
 				}

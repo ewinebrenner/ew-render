@@ -15,42 +15,37 @@
 #include <ew/ew.h>
 #include <ew/procGen.h>
 #include <ew/ewMath/transformations.h>
+#include <ew/ewMath/splines.h>
+#include <ew/particles.h>
+#include <ew/fpsCounter.h>
+
+
+#include <ew/external/imguizmo/ImGuizmo.h>
+
+struct AppTransformSettings {
+	ImGuizmo::OPERATION mCurrentGizmoOperation = ImGuizmo::TRANSLATE;
+	ImGuizmo::MODE mCurrentGizmoMode = ImGuizmo::WORLD;
+	bool useSnap = false;
+	ew::Vec3 translateSnap = 0.5f;
+	float rotateSnap = 1.0f;
+	float scaleSnap = 0.1f;
+}appTransformSettings;
 
 void processInput(GLFWwindow* window);
 void onCursorMoved(GLFWwindow* window, double xpos, double ypos);
 void onMouseButtonPressed(GLFWwindow* window, int button, int action, int mods);
+void onWindowResized(GLFWwindow* window, int width, int height);
 
-const int SCREEN_WIDTH = 1920;
-const int SCREEN_HEIGHT = 1080;
+void TransformGizmo(const float* view, const float* projection, float* matrix, const AppTransformSettings& settings);
+void TransformSettingsPanel(AppTransformSettings& settings);
 
-struct Camera {
-	float fov = 60.0f;
-	ew::Vec3 position = ew::Vec3(0.0f, 0.0f, 10.0f);
-	ew::Vec3 target = ew::Vec3(0.0f, 0.0f, 1.0f);
-	bool orthographic = false;
-	float orthographicHeight = 10.0f;
+int SCREEN_WIDTH = 1280;
+int SCREEN_HEIGHT = 720;
 
-};
-struct CameraController {
-	float moveSpeed = 5.0f;
-	float yaw = -90.0f;
-	float pitch = 0.0f;
-	double prevMouseX, prevMouseY;
-	bool firstMouse = true;
-	float mouseSensitivity = 0.1f;
-};
-
-const int NUM_CUBES = 8;
-ew::Transform cubeTransform;
-ew::Transform sphereTransform;
-ew::Transform cylinderTransform;
-ew::Transform planeTransform;
-
-Camera camera;
-CameraController cameraController;
+ew::Camera camera;
+ew::CameraController cameraController;
 
 struct Light {
-	ew::Transform transform;
 	ew::Vec4 color = ew::Vec4(1.0f, 1.0f, 1.0f, 1.0f);
 };
 
@@ -77,6 +72,13 @@ ew::Vec3 controlPoints[4] = {
 int splineSegments = 32;
 float splineWidth = 0.3f;
 
+void drawMesh(const ew::Shader& shader, const ew::Mesh& mesh, const ew::Mat4& modelMatrix) {
+	mesh.bind();
+	shader.use();
+	shader.setMat4("_Model", modelMatrix);
+	glDrawElements(GL_TRIANGLES, mesh.getNumIndices(), GL_UNSIGNED_INT, NULL);
+}
+
 void drawMesh(const ew::Shader& shader, const ew::Mesh& mesh, const ew::Transform& transform, int drawMode = GL_TRIANGLES) {
 	mesh.bind();
 	shader.setMat4("_Model", transform.getModelMatrix());
@@ -87,26 +89,6 @@ void drawMesh(const ew::Shader& shader, const ew::Mesh& mesh, const ew::Transfor
 		glDrawArrays(drawMode, 0, mesh.getNumVertices());
 	}
 }
-
-ew::Vec3 evaluateQuadraticBezier(ew::Vec3 p0, ew::Vec3 p1, ew::Vec3 p2, float t) {
-	ew::Vec3 p3 = ew::Lerp(p0, p1, t);
-	ew::Vec3 p4 = ew::Lerp(p1, p2, t);
-	return ew::Lerp(p3, p4, t);
-}
-
-ew::Vec3 evaluateCubicBezier(ew::Vec3 p0, ew::Vec3 p1, ew::Vec3 p2, ew::Vec3 p3, float t) {
-	ew::Vec3 p4 = ew::Lerp(p0, p1, t);
-	ew::Vec3 p5 = ew::Lerp(p1, p2, t);
-	ew::Vec3 p6 = ew::Lerp(p2, p3, t);
-	return evaluateQuadraticBezier(p4, p5, p6, t);
-}
-ew::Vec3 evaluateCubicBezierTangent(ew::Vec3 p0, ew::Vec3 p1, ew::Vec3 p2, ew::Vec3 p3, float t) {
-	float oneMinusT = (1.0f - t);
-	return 3.0f * oneMinusT * oneMinusT * (p1 - p0)
-		+ 6.0f * t * oneMinusT * (p2 - p1)
-		+ 3.0f * t * t * (p3 - p2);
-}
-
 void createCubicBezierMesh(ew::Vec3 p0, ew::Vec3 p1, ew::Vec3 p2, ew::Vec3 p3, int numSegments, ew::MeshData* mesh) {
 	mesh->vertices.clear();
 	mesh->indices.clear();
@@ -114,7 +96,7 @@ void createCubicBezierMesh(ew::Vec3 p0, ew::Vec3 p1, ew::Vec3 p2, ew::Vec3 p3, i
 	{
 		float t = (float)i / numSegments;
 		ew::Vertex v;
-		v.pos = evaluateCubicBezier(p0, p1, p2, p3, t);
+		v.pos = ew::evaluateCubicBezier(p0, p1, p2, p3, t);
 		v.normal = ew::Vec3(0, 0, 1);
 		mesh->vertices.push_back(v);
 	}
@@ -126,8 +108,8 @@ void createCubicBezierTrackMesh(ew::Vec3 p0, ew::Vec3 p1, ew::Vec3 p2, ew::Vec3 
 	for (size_t i = 0; i <= numSegments; i++)
 	{
 		float t = (float)i / numSegments;
-		ew::Vec3 centerPos = evaluateCubicBezier(p0, p1, p2, p3, t);
-		ew::Vec3 tangent = evaluateCubicBezierTangent(p0, p1, p2, p3, t);
+		ew::Vec3 centerPos = ew::evaluateCubicBezier(p0, p1, p2, p3, t);
+		ew::Vec3 tangent = ew::evaluateCubicBezierTangent(p0, p1, p2, p3, t);
 		ew::Vec3 right = ew::Normalize(ew::Cross(tangent, ew::Vec3(0, 1, 0)));
 		ew::Vec3 normal = ew::Normalize(ew::Cross(right, tangent));
 
@@ -154,9 +136,23 @@ void createCubicBezierTrackMesh(ew::Vec3 p0, ew::Vec3 p1, ew::Vec3 p2, ew::Vec3 
 	}
 }
 
-float cubeAnimT = 0.0f;
-float cubeSpeed = 1.0f;
-float cubeDir = 1.0f;
+
+unsigned int selectionIndex = 0;
+ew::Framebuffer* mouseSelectFramebuffer;
+ImGuiTreeNodeFlags base_flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth;
+int selection_mask = (1 << 2);
+
+struct MeshRenderer {
+	ew::Mat4 transform;
+	ew::Mesh* mesh;
+	ew::Shader* shader;
+};
+
+const int NUM_RENDERERS = 8;
+MeshRenderer meshRenderers[NUM_RENDERERS];
+
+const int MAX_PARTICLES = 10000;
+ew::FPSCounter fpsCounter(0.5f);
 
 int main() {
 	printf("Initializing...");
@@ -173,6 +169,8 @@ int main() {
 	glfwMakeContextCurrent(window);
 	glfwSetCursorPosCallback(window, onCursorMoved);
 	glfwSetMouseButtonCallback(window, onMouseButtonPressed);
+	glfwSetFramebufferSizeCallback(window, onWindowResized);
+
 	if (!gladLoadGL(glfwGetProcAddress)) {
 		printf("GLAD Failed to load GL headers");
 		return 1;
@@ -183,19 +181,22 @@ int main() {
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
 	ImGui_ImplOpenGL3_Init();
 
+	camera.m_position = ew::Vec3(0.0f, 0.0f, 10.0f);
+
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
 	glPointSize(3);
+	
 	//glEnable(GL_CULL_FACE);
 	//glCullFace(GL_BACK);
 
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
+	//Create meshes
 	ew::MeshData splineMeshData, sphereMeshData, cubeMeshData;
 	createCubicBezierTrackMesh(controlPoints[0], controlPoints[1], controlPoints[2], controlPoints[3], 32,splineWidth, &splineMeshData);
-
 	ew::createSphere(0.5f, 32, &sphereMeshData);
-	ew::createCube(0.5f, &cubeMeshData);
+	ew::createCube(1.0f, &cubeMeshData);
 
 	ew::Mesh splineMesh, sphereMesh, cubeMesh;
 	splineMesh.load(splineMeshData);
@@ -204,22 +205,39 @@ int main() {
 	
 	ew::Shader unlitShader("assets/unlit.vert", "assets/unlit.frag");
 	ew::Shader litShader("assets/lit.vert", "assets/lit.frag");
+	ew::Shader pickingShader("assets/objectPicking.vert", "assets/objectPicking.frag");
+	ew::Shader particleShader("assets/particle.vert", "assets/particle.frag");
 
 	unsigned int texture = ew::loadTexture("assets/bricks_color.jpg", GL_REPEAT, GL_LINEAR_MIPMAP_LINEAR);
 
+	ew::Framebuffer pickingFramebuffer(SCREEN_WIDTH,SCREEN_HEIGHT, ew::TextureInternalFormat::RGB32UI, ew::TextureFormat::RGB_INTEGER, ew::TextureType::UINT);
+	mouseSelectFramebuffer = &pickingFramebuffer;
+
 	//Set up scene
-	sphereTransform.position = ew::Vec3(2.0f, 0.0f, 0.0f);
-	cylinderTransform.position = ew::Vec3(-2.0f, 0.0f, 0.0f);
-	planeTransform.position = ew::Vec3(4.0f, 0.0f, 0.0f);
+	MeshRenderer* splineMeshRenderer = &meshRenderers[0];
+	splineMeshRenderer->transform = ew::IdentityMatrix();
+	splineMeshRenderer->mesh = &splineMesh;
+	splineMeshRenderer->shader = &litShader;
 
-	light.transform.position = ew::Vec3(2.0f, 2.0f, 0.0f);
-	light.transform.scale = ew::Vec3(0.3f);
+	MeshRenderer* lightMeshRenderer = &meshRenderers[1];
+	lightMeshRenderer->transform = ew::TranslationMatrix(3.0f, 3.0f, 0.0f) * ew::ScaleMatrix(0.3f);
+	lightMeshRenderer->mesh = &sphereMesh;
+	lightMeshRenderer->shader = &unlitShader;
 
+	for (size_t i = 2; i < NUM_RENDERERS; i++)
+	{
+		meshRenderers[i].transform = ew::IdentityMatrix();
+		meshRenderers[i].mesh = &cubeMesh;
+		meshRenderers[i].shader = &litShader;
+	}
+
+	ew::ParticleSystem particleSystem(MAX_PARTICLES);
+	
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
 		processInput(window);
 
-		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+		glClearColor(camera.m_bgColor.x, camera.m_bgColor.y, camera.m_bgColor.z, camera.m_bgColor.w);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		//The current time in seconds this frame
@@ -227,33 +245,24 @@ int main() {
 		deltaTime = time - prevTime;
 		prevTime = time;
 
-		//Ping pong
-		if (cubeAnimT > 1.0f && cubeDir > 0) {
-			cubeDir = -1.0f;
-		}
-		else if (cubeAnimT < 0.0f && cubeDir < 0) {
-			cubeDir = 1.0f;
-		}
-
-		cubeAnimT += deltaTime * cubeSpeed * cubeDir;
+		fpsCounter.update(deltaTime);
+		camera.m_aspectRatio = (float)SCREEN_WIDTH / SCREEN_HEIGHT;
 
 		//Update camera forward vector
 		float yawRad = ew::Radians(cameraController.yaw);
 		float pitchRad = ew::Radians(cameraController.pitch);
 
-		ew::Vec3 camForward;
-		camForward.x = cosf(yawRad) * cosf(pitchRad);
-		camForward.y = sinf(pitchRad);
-		camForward.z = sinf(yawRad) * cosf(pitchRad);
-		camForward = ew::Normalize(camForward);
+		ew::Vec3 forward;
+		forward.x = cosf(yawRad) * cosf(pitchRad);
+		forward.y = sinf(pitchRad);
+		forward.z = sinf(yawRad) * cosf(pitchRad);
+		forward = ew::Normalize(forward);
 
-		camera.target = camera.position + camForward;
-
+		camera.m_target = camera.m_position + forward;
+		
 		//Construct View and Projection
-		ew::Mat4 view = ew::LookAtMatrix(camera.position, camera.target, ew::Vec3(0, 1, 0));
-		ew::Mat4 projection = camera.orthographic ? 
-			ew::OrthographicMatrix(camera.orthographicHeight, (float)SCREEN_WIDTH / SCREEN_HEIGHT, 0.01f,1000.0f) :
-			ew::PerspectiveMatrix(ew::Radians(camera.fov), (float)SCREEN_WIDTH / SCREEN_HEIGHT, 0.01f, 1000.0f);
+		ew::Mat4 view = ew::GetViewMatrix(camera);
+		ew::Mat4 projection = ew::GetProjectionMatrix(camera);
 
 		ew::Mat4 viewProjection = projection * view;
 
@@ -265,8 +274,8 @@ int main() {
 		glBindTexture(GL_TEXTURE_2D, texture);
 		litShader.setInt("_Texture", 0);
 
-		litShader.setVec3("_EyePos", camera.position);
-		litShader.setVec3("_Light.position", light.transform.position);
+		litShader.setVec3("_EyePos", camera.m_position);
+		litShader.setVec3("_Light.position", lightMeshRenderer->transform[3].toVec3());
 		litShader.setVec4("_Light.color", light.color);
 
 		litShader.setVec4("_Material.color", material.color);
@@ -275,34 +284,36 @@ int main() {
 		litShader.setFloat("_Material.specularK", material.specularK);
 		litShader.setFloat("_Material.shininess", material.shininess);
 
-		drawMesh(litShader, splineMesh, cubeTransform, GL_TRIANGLES);
+		unlitShader.use();
+		unlitShader.setMat4("_ViewProjection", viewProjection);
+		unlitShader.setVec4("_Color", light.color);
 
-
-		//Draw cube
+		for (size_t i = 0; i < NUM_RENDERERS; i++)
 		{
-			cubeMesh.bind();
-			ew::Vec3 pos = evaluateCubicBezier(controlPoints[0], controlPoints[1], controlPoints[2], controlPoints[3], cubeAnimT);
-			ew::Vec3 forward = ew::Normalize(evaluateCubicBezierTangent(controlPoints[0], controlPoints[1], controlPoints[2], controlPoints[3], cubeAnimT));
-			ew::Vec3 right = ew::Normalize(ew::Cross(forward, ew::Vec3(0, 1, 0)));
-			ew::Vec3 up = ew::Normalize(ew::Cross(right, forward));
-			pos += up * 0.125f;
+			drawMesh(*meshRenderers[i].shader, *meshRenderers[i].mesh, meshRenderers[i].transform);
+		}
 
-			ew::Mat4 rotation = ew::Mat4(
-				ew::Vec4(right, 0.0f),
-				ew::Vec4(up, 0.0f),
-				ew::Vec4(forward, 0.0f),
-				ew::Vec4(0.0f, 0.0f, 0.0f, 1.0f)
-			);
-			ew::Mat4 model = ew::TranslationMatrix(pos.x, pos.y, pos.z) * rotation * ew::ScaleMatrix(0.5f,0.5f,0.5f);
-			litShader.setMat4("_Model", model);
-			glDrawElements(GL_TRIANGLES, cubeMesh.getNumIndices(), GL_UNSIGNED_INT, NULL);
+		if (particleSystem.m_enabled) {
+			particleSystem.draw(deltaTime, &particleShader, view, projection, camera.m_position);
 		}
 		
-		//Draw light as sphere
-		//unlitShader.use();
-		//unlitShader.setMat4("_ViewProjection", viewProjection);
-		//unlitShader.setVec4("_Color", light.color);
-		//drawMesh(unlitShader, sphereMesh, light.transform);
+		//Render pickable meshes to object picking framebuffer
+		{
+			pickingFramebuffer.bind();
+			glClearColor(0, 0, 0, 0);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			glViewport(0, 0, pickingFramebuffer.getWidth(), pickingFramebuffer.getHeight());
+
+			pickingShader.use();
+			for (size_t i = 0; i < NUM_RENDERERS; i++)
+			{
+				pickingShader.setInt("_ObjectIndex", i + 1);
+				pickingShader.setMat4("_MVP", viewProjection * meshRenderers[i].transform);
+				drawMesh(pickingShader, *meshRenderers[i].mesh, meshRenderers[i].transform);
+			}
+			pickingFramebuffer.unbind();
+			glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+		}
 
 		//Render UI
 		{
@@ -311,9 +322,9 @@ int main() {
 			ImGui::NewFrame();
 
 			ImGui::Begin("Settings");
+			ImGui::Text("FPS:%f", fpsCounter.getFPS());
 			if (ImGui::CollapsingHeader("Light")) {
 				ImGui::ColorEdit4("Color", &light.color.x);
-				ImGui::DragFloat3("Position", &light.transform.position.x, 0.2f);
 			}
 			if (ImGui::CollapsingHeader("Material")) {
 				ImGui::SliderFloat("Ambient K", &material.ambientK,0.0f,1.0f);
@@ -323,14 +334,15 @@ int main() {
 			}
 
 			if (ImGui::CollapsingHeader("Camera")) {
-				if (camera.orthographic) {
-					ImGui::DragFloat("Height", &camera.orthographicHeight, 0.5f);
+				ImGui::ColorEdit4("Background Color", &camera.m_bgColor[0]);
+				if (camera.m_orthographic) {
+					ImGui::DragFloat("Height", &camera.m_orthographicSize, 0.5f);
 				}
 				else {
-					ImGui::DragFloat("FOV", &camera.fov, 1.0f, 0.0f, 180.0f);
+					ImGui::DragFloat("FOV", &camera.m_fov, 1.0f, 0.0f, 180.0f);
 				}
 
-				ImGui::Checkbox("Orthographic", &camera.orthographic);
+				ImGui::Checkbox("Orthographic", &camera.m_orthographic);
 				ImGui::DragFloat("Move speed", &cameraController.moveSpeed, 0.1f);
 			}
 			if (ImGui::CollapsingHeader("Spline")) {
@@ -347,10 +359,93 @@ int main() {
 					createCubicBezierTrackMesh(controlPoints[0], controlPoints[1], controlPoints[2], controlPoints[3], splineSegments, splineWidth,&splineMeshData);
 					splineMesh.load(splineMeshData);
 				}
-				ImGui::SliderFloat("Cube Speed", &cubeSpeed, 0.0f, 5.0f);
+			}
+			if (ImGui::CollapsingHeader("Particles")) {
+				ImGui::Text("Num Particles: %d", particleSystem.getNumParticles());
+				ImGui::Checkbox("Enabled", &particleSystem.m_enabled);
+				ImGui::Checkbox("Billboard", &particleSystem.m_billboard);
+				if (ImGui::Button("Restart")) {
+					particleSystem.restart();
+				}
 			}
 			
 			ImGui::End();
+
+			//IMGUIZMO
+
+			ImGuizmo::SetOrthographic(camera.m_orthographic);
+			ImGuizmo::BeginFrame();
+		//	ImGuizmo::DrawGrid(&view[0][0], &projection[0][0], &ew::IdentityMatrix()[0][0], 100.f);
+
+
+			if (glfwGetInputMode(window, GLFW_CURSOR) != GLFW_CURSOR_DISABLED) {
+				if (ImGui::IsKeyPressed(ImGuiKey::ImGuiKey_W))
+					appTransformSettings.mCurrentGizmoOperation = ImGuizmo::TRANSLATE;
+				if (ImGui::IsKeyPressed(ImGuiKey::ImGuiKey_E))
+					appTransformSettings.mCurrentGizmoOperation = ImGuizmo::ROTATE;
+				if (ImGui::IsKeyPressed(ImGuiKey::ImGuiKey_R)) 
+					appTransformSettings.mCurrentGizmoOperation = ImGuizmo::SCALE;
+				if (ImGui::IsKeyPressed(ImGuiKey::ImGuiKey_Z)) 
+					appTransformSettings.mCurrentGizmoMode = ImGuizmo::WORLD;
+				if (ImGui::IsKeyPressed(ImGuiKey::ImGuiKey_X))
+					appTransformSettings.mCurrentGizmoMode = ImGuizmo::LOCAL;
+			}
+
+			TransformSettingsPanel(appTransformSettings);
+
+			//Draw hierarchy
+			{
+				ImGui::Begin("Hierarchy");
+				
+				int node_clicked = -1;
+				for (int i = 0; i < NUM_RENDERERS; i++)
+				{
+					ImGuiTreeNodeFlags node_flags = base_flags;
+					
+					const bool is_selected = (selection_mask & (1 << i)) != 0;
+					if (is_selected)
+						node_flags |= ImGuiTreeNodeFlags_Selected;
+
+					node_flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+					ImGui::TreeNodeEx((void*)(intptr_t)i, node_flags, "Mesh %d", i);
+					if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()){
+						node_clicked = i;
+						selectionIndex = i;
+					}
+				}
+				if (node_clicked != -1)
+				{
+					// Update selection state
+					// (process outside of tree loop to avoid visual inconsistencies during the clicking frame)
+					if (ImGui::GetIO().KeyCtrl)
+						selection_mask ^= (1 << node_clicked);          // CTRL+click to toggle
+					else //if (!(selection_mask & (1 << node_clicked))) // Depending on selection behavior you want, may want to preserve selection when clicking on item that is part of the selection
+						selection_mask = (1 << node_clicked);           // Click to single-select
+				}
+				ImGui::End();
+			}
+			
+			//Draw Inspector
+			{
+				ImGui::Begin("Inspector");
+				ImGui::Text("Name");
+				ImGui::SameLine();
+				ImGui::Text("Cube %d", selectionIndex);
+				if (ImGui::CollapsingHeader("Transform")) {
+					//Individual transform
+					float matrixTranslation[3], matrixRotation[3], matrixScale[3];
+					ImGuizmo::DecomposeMatrixToComponents(&meshRenderers[selectionIndex].transform[0][0], matrixTranslation, matrixRotation, matrixScale);
+					ImGui::DragFloat3("Translation", matrixTranslation, 0.05f);
+					ImGui::DragFloat3("Rotation", matrixRotation, 1.0f);
+					ImGui::DragFloat3("Scale", matrixScale, 0.05f);
+					ImGuizmo::RecomposeMatrixFromComponents(matrixTranslation, matrixRotation, matrixScale, &meshRenderers[selectionIndex].transform[0][0]);
+				}
+				
+				ImGui::End();
+			}
+			
+
+			TransformGizmo(&view[0][0], &projection[0][0], &meshRenderers[selectionIndex].transform[0][0], appTransformSettings);
 
 			ImGui::Render();
 			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -361,35 +456,33 @@ int main() {
 	printf("Shutting down...");
 }
 
+float getInputAxis(GLFWwindow* window, int positiveKey, int negativeKey) {
+	float axisValue = 0.0f;
+	if (glfwGetKey(window, positiveKey)) {
+		axisValue++;
+	}
+	if (glfwGetKey(window, negativeKey)) {
+		axisValue--;
+	}
+	return axisValue;
+}
 void processInput(GLFWwindow* window) {
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE)) {
 		glfwSetWindowShouldClose(window, true);
 		return;
 	}
 
-	ew::Vec3 forward = ew::Normalize(camera.target - camera.position);
-	ew::Vec3 right = ew::Normalize(ew::Cross(forward, ew::Vec3(0, 1, 0)));
-	ew::Vec3 up = ew::Normalize(ew::Cross(forward,right));
-	if (glfwGetKey(window,GLFW_KEY_W)) {
-		camera.position += forward * cameraController.moveSpeed * deltaTime;
-	}
-	if (glfwGetKey(window, GLFW_KEY_S)) {
-		camera.position -= forward * cameraController.moveSpeed * deltaTime;
-	}
-	if (glfwGetKey(window, GLFW_KEY_D)) {
-		camera.position += right * cameraController.moveSpeed * deltaTime;
-	}
-	if (glfwGetKey(window, GLFW_KEY_A)) {
-		camera.position -= right * cameraController.moveSpeed * deltaTime;
-	}
-	if (glfwGetKey(window, GLFW_KEY_Q)) {
-		camera.position += up * cameraController.moveSpeed * deltaTime;
-	}
-	if (glfwGetKey(window, GLFW_KEY_E)) {
-		camera.position -= up * cameraController.moveSpeed * deltaTime;
-	}
+	//Only move camera if cursor is locked
+	if (glfwGetInputMode(window, GLFW_CURSOR) != GLFW_CURSOR_DISABLED)
+		return;
 
+	ew::Vec3 inputValues = ew::Vec3(
+		getInputAxis(window, GLFW_KEY_D, GLFW_KEY_A),
+		getInputAxis(window, GLFW_KEY_Q, GLFW_KEY_E),
+		getInputAxis(window, GLFW_KEY_W, GLFW_KEY_S)
+	);
 
+	ew::MoveFlyCamera(&cameraController, &camera, inputValues, deltaTime);
 }
 
 void onCursorMoved(GLFWwindow* window, double xpos, double ypos)
@@ -397,24 +490,7 @@ void onCursorMoved(GLFWwindow* window, double xpos, double ypos)
 	if (glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_NORMAL)
 		return;
 
-	if (cameraController.firstMouse) {
-		cameraController.prevMouseX = xpos;
-		cameraController.prevMouseY = ypos;
-		cameraController.firstMouse = false;
-	}
-	float deltaX = xpos - cameraController.prevMouseX;
-	float deltaY = ypos - cameraController.prevMouseY;
-	cameraController.yaw += deltaX * cameraController.mouseSensitivity;
-	cameraController.pitch += -deltaY * cameraController.mouseSensitivity;
-	if (cameraController.pitch < -89.9f) {
-		cameraController.pitch = -89.9f;
-	}
-	else if (cameraController.pitch > 89.9f) {
-		cameraController.pitch = 89.9f;
-	}
-
-	cameraController.prevMouseX = xpos;
-	cameraController.prevMouseY = ypos;
+	ew::AimFlyCamera(&cameraController, xpos, ypos);
 }
 
 void onMouseButtonPressed(GLFWwindow* window, int button, int action, int mods)
@@ -428,5 +504,90 @@ void onMouseButtonPressed(GLFWwindow* window, int button, int action, int mods)
 			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 		}
 	}
+
+	bool mouseLocked = glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED;
+
+	//Mouse is unlocked and left mouse button is pressed
+	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && !mouseLocked) {
+		double mouseX, mouseY;
+		glfwGetCursorPos(window, &mouseX, &mouseY);
+		mouseY = SCREEN_HEIGHT - mouseY;
+		ew::PixelInfo pixelInfo = mouseSelectFramebuffer->readPixel((unsigned int)mouseX, (unsigned int)mouseY);
+		if (pixelInfo.r > 0) {
+			selectionIndex = pixelInfo.r - 1;
+			selection_mask = (1 << selectionIndex);
+		}
+	}
+}
+
+void onWindowResized(GLFWwindow* window, int width, int height) {
+	SCREEN_WIDTH = width;
+	SCREEN_HEIGHT = height;
+	mouseSelectFramebuffer->resize(width, height);
+}
+
+
+void TransformSettingsPanel(AppTransformSettings& settings) {
+	ImGui::Begin("Transform Settings");
+	//Global settings
+	if (ImGui::RadioButton("Translate", settings.mCurrentGizmoOperation == ImGuizmo::TRANSLATE))
+		settings.mCurrentGizmoOperation = ImGuizmo::TRANSLATE;
+	ImGui::SameLine();
+	if (ImGui::RadioButton("Rotate", settings.mCurrentGizmoOperation == ImGuizmo::ROTATE))
+		settings.mCurrentGizmoOperation = ImGuizmo::ROTATE;
+	ImGui::SameLine();
+	if (ImGui::RadioButton("Scale", settings.mCurrentGizmoOperation == ImGuizmo::SCALE))
+		settings.mCurrentGizmoOperation = ImGuizmo::SCALE;
+
+	if (settings.mCurrentGizmoOperation != ImGuizmo::SCALE)
+	{
+		if (ImGui::RadioButton("Local", settings.mCurrentGizmoMode == ImGuizmo::LOCAL))
+			settings.mCurrentGizmoMode = ImGuizmo::LOCAL;
+		ImGui::SameLine();
+		if (ImGui::RadioButton("World", settings.mCurrentGizmoMode == ImGuizmo::WORLD))
+			settings.mCurrentGizmoMode = ImGuizmo::WORLD;
+	}
+	settings.useSnap = ImGui::IsKeyDown(ImGuiKey_LeftCtrl);
+	//ImGui::Checkbox("Snap", &settings.useSnap);
+	//ImGui::SameLine();
+
+	switch (settings.mCurrentGizmoOperation)
+	{
+	case ImGuizmo::TRANSLATE:
+		ImGui::DragFloat3("Snap", &settings.translateSnap.x, 0.1f);
+		break;
+	case ImGuizmo::ROTATE:
+		ImGui::DragFloat("Angle Snap", &settings.rotateSnap, 0.1f);
+		break;
+	case ImGuizmo::SCALE:
+		ImGui::DragFloat("Scale Snap", &settings.scaleSnap, 0.1f);
+		break;
+	}
+	ImGui::End();
+}
+
+void TransformGizmo(const float* view, const float* projection, float* matrix, const AppTransformSettings& settings)
+{
 	
+	//Determine current snap amount
+	const float* currentSnap = NULL;
+	if (settings.useSnap) {
+		switch (settings.mCurrentGizmoOperation) 
+		{
+		case ImGuizmo::TRANSLATE:
+			currentSnap = &settings.translateSnap.x;
+			break;
+		case ImGuizmo::ROTATE:
+			currentSnap = &settings.rotateSnap;
+			break;
+		case ImGuizmo::SCALE:
+			currentSnap = &settings.scaleSnap;
+			break;
+		}
+	}
+	
+	//Draw gizmo in worldspace
+	ImGuiIO& io = ImGui::GetIO();
+	ImGuizmo::SetRect(0, 0, io.DisplaySize.x, io.DisplaySize.y);
+	ImGuizmo::Manipulate(view, projection, settings.mCurrentGizmoOperation, settings.mCurrentGizmoMode, matrix, NULL, currentSnap);
 }

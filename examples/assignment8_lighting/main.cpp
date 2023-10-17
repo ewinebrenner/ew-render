@@ -41,7 +41,7 @@ struct CameraController {
 };
 
 const int NUM_CUBES = 8;
-ew::Transform cubeTransform;
+ew::Transform splineTransform;
 ew::Transform sphereTransform;
 ew::Transform cylinderTransform;
 ew::Transform planeTransform;
@@ -180,7 +180,7 @@ int main() {
 		litShader.setFloat("_Material.specularK", material.specularK);
 		litShader.setFloat("_Material.shininess", material.shininess);
 
-		drawMesh(litShader, cubeMesh, cubeTransform);
+		drawMesh(litShader, cubeMesh, splineTransform);
 		drawMesh(litShader, sphereMesh, sphereTransform);
 		drawMesh(litShader, cylinderMesh, cylinderTransform);
 		drawMesh(litShader, planeMesh, planeTransform);

@@ -16,19 +16,12 @@
 #include <ew/ewMath/transformations.h>
 #include <ew/procGen.h>
 
-const int SCREEN_WIDTH = 1080;
-const int SCREEN_HEIGHT = 1080;
+const int SCREEN_WIDTH = 720;
+const int SCREEN_HEIGHT = 720;
 
-void resetTransforms(ew::Transform transforms[], int numTransforms) {
-	for (size_t i = 0; i < numTransforms; i++)
-	{
-		ew::Transform& transform = transforms[i];
-		transform.position.x = (i % 2) - 0.5f;
-		transform.position.y = (i / 2) - 0.5f;
-		transform.rotation = ew::Vec3(0.0f);
-		transform.scale = ew::Vec3(1.0f);
-	}
-}
+const int NUM_CUBES = 4;
+ew::Transform cubeTransforms[NUM_CUBES];
+
 int main() {
 
 	printf("Initializing...");
@@ -63,36 +56,38 @@ int main() {
 	ew::Mesh cubeMesh;
 	cubeMesh.load(cubeMeshData);
 
-	const int NUM_CUBES = 4;
-	ew::Transform cubeTransforms[NUM_CUBES];
-	resetTransforms(cubeTransforms, NUM_CUBES);
-
 	ew::Shader shader("assets/unlit.vert", "assets/unlit.frag");
-	unsigned int texture = ew::loadTexture("assets/bricks_color.jpg",GL_REPEAT,GL_LINEAR);
+	shader.use();
 
+	cubeMesh.bind();
+
+	for (size_t i = 0; i < NUM_CUBES; i++)
+	{
+		cubeTransforms[i].position.x = i % (NUM_CUBES/2) - 0.5;
+		cubeTransforms[i].position.y = i / (NUM_CUBES/2) - 0.5;
+	}
 
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
 		glClearColor(0.3f, 0.4f, 0.9f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		shader.use();
-		cubeMesh.bind();
 		for (size_t i = 0; i < NUM_CUBES; i++)
 		{
 			//Construct model matrix
 			shader.setMat4("_Model", cubeTransforms[i].getModelMatrix());
+
 			glDrawElements(GL_TRIANGLES, cubeMesh.getNumIndices(), GL_UNSIGNED_INT, NULL);
 		}
-	
-
+		
 		//Render UI
 		{
 			ImGui_ImplGlfw_NewFrame();
 			ImGui_ImplOpenGL3_NewFrame();
 			ImGui::NewFrame();
 
-			ImGui::Begin("Settings");
+			ImGui::Begin("Transformations");
+
 			for (size_t i = 0; i < NUM_CUBES; i++)
 			{
 				ImGui::PushID(i);
@@ -103,9 +98,7 @@ int main() {
 				}
 				ImGui::PopID();
 			}
-			if (ImGui::Button("Reset All")) {
-				resetTransforms(cubeTransforms, NUM_CUBES);
-			}
+
 			ImGui::End();
 
 			ImGui::Render();

@@ -28,10 +28,10 @@ struct Vertex {
 
 Vertex vertices[4] = {
 	//x   //y  //z   //u  //v
-	{ -0.5, -0.5, 0.0, 0.0, 0.0}, //Bottom left
-	{  0.5, -0.5, 0.0, 1.0, 0.0}, //Bottom right
-	{  0.5,  0.5, 0.0, 1.0, 1.0},  //Top right
-	{ -0.5,  0.5, 0.0, 0.0, 1.0}  //Top left
+	{ -1.0, -1.0, 0.0, 0.0, 0.0}, //Bottom left
+	{  1.0, -1.0, 0.0, 1.0, 0.0}, //Bottom right
+	{  1.0,  1.0, 0.0, 1.0, 1.0},  //Top right
+	{ -1.0,  1.0, 0.0, 0.0, 1.0}  //Top left
 };
 
 unsigned int indices[6] = {
@@ -115,20 +115,25 @@ struct TextureSettings {
 	const char* filterModes[3] = { "Nearest","Linear","Mipmap Linear"};
 	const int filterModeEnums[3] = {GL_NEAREST, GL_LINEAR, GL_LINEAR_MIPMAP_LINEAR};
 
-	int wrapIndex = 0;
-	int filterIndex = 0;
 	float scale = 1.0f;
 	float borderColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
 };
 TextureSettings textureSettings;
 
 struct BackgroundSettings {
+	int wrapIndex = 0;
+	int filterIndex = 0;
+	float tiling = 1.0f;
 	float distortionStrength = 0.1f;
-	float distortionSpeed = 0.2f;
-	Color glowColor = { 0.1f,0.3f,0.8f, 1.0f };
+	float distortionSpeed = 0.05f;
+	Color glowColor = { 0.1f,0.2f,0.5f, 1.0f };
 }bgSettings;
 
-Color characterColor = { 1.0f, 1.0f, 1.0f, 1.0f };
+struct CharacterSettings {
+	int filterIndex = 0;
+	Color characterColor = { 1.0f, 1.0f, 1.0f, 1.0f };
+	float characterSpeed = 5.0f;
+}charSettings;
 
 int main() {
 	printf("Initializing...");
@@ -169,6 +174,7 @@ int main() {
 
 	//Enable blending for character transparency
 	glEnable(GL_BLEND);
+	glBlendEquation(GL_FUNC_ADD);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	while (!glfwWindowShouldClose(window)) {
@@ -195,6 +201,7 @@ int main() {
 		backgroundShader.setInt("_TextureA", 0);
 		backgroundShader.setInt("_TextureB", 1);
 		backgroundShader.setInt("_NoiseTexture", 2);
+		backgroundShader.setFloat("_Tiling", bgSettings.tiling);
 		backgroundShader.setFloat("_DistortionStrength", bgSettings.distortionStrength);
 		backgroundShader.setFloat("_DistortionSpeed", bgSettings.distortionSpeed);
 		backgroundShader.setVec4("_GlowColor", bgSettings.glowColor.r, bgSettings.glowColor.g, bgSettings.glowColor.b, bgSettings.glowColor.a);
@@ -207,9 +214,10 @@ int main() {
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, characterTexture);
 		characterShader.setInt("_Texture", 0);
-		characterShader.setVec4("_Color", characterColor.r, characterColor.g, characterColor.b, characterColor.a);
+		characterShader.setVec4("_Color", charSettings.characterColor.r, charSettings.characterColor.g, charSettings.characterColor.b, charSettings.characterColor.a);
+		characterShader.setFloat("_Speed", charSettings.characterSpeed);
 
-		//glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL);
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL);
 
 		//Render UI
 		{
@@ -218,23 +226,39 @@ int main() {
 			ImGui::NewFrame();
 
 			ImGui::Begin("Settings");
-			if (ImGui::Combo("Wrap Mode", &textureSettings.wrapIndex, textureSettings.wrapModes, IM_ARRAYSIZE(textureSettings.wrapModes))) {
-				GLint wrapEnum = textureSettings.wrapModeEnums[textureSettings.wrapIndex];
-				glTextureParameteri(textureA, GL_TEXTURE_WRAP_S, wrapEnum);
-				glTextureParameteri(textureA, GL_TEXTURE_WRAP_T, wrapEnum);
+			if (ImGui::CollapsingHeader("Background")) {
+				if (ImGui::Combo("BG Filter Mode", &bgSettings.filterIndex, textureSettings.filterModes, IM_ARRAYSIZE(textureSettings.filterModes))) {
+					GLint filterEnum = textureSettings.filterModeEnums[bgSettings.filterIndex];
+					glTextureParameteri(textureA, GL_TEXTURE_MIN_FILTER, filterEnum);
+					glTextureParameteri(textureA, GL_TEXTURE_MAG_FILTER, filterEnum);
+					glTextureParameteri(textureB, GL_TEXTURE_MIN_FILTER, filterEnum);
+					glTextureParameteri(textureB, GL_TEXTURE_MAG_FILTER, filterEnum);
+				}
+				if (ImGui::Combo("BG Wrap Mode", &bgSettings.wrapIndex, textureSettings.wrapModes, IM_ARRAYSIZE(textureSettings.wrapModes))) {
+					GLint wrapEnum = textureSettings.wrapModeEnums[bgSettings.wrapIndex];
+					glTextureParameteri(textureA, GL_TEXTURE_WRAP_S, wrapEnum);
+					glTextureParameteri(textureA, GL_TEXTURE_WRAP_T, wrapEnum);
+					glTextureParameteri(textureB, GL_TEXTURE_WRAP_S, wrapEnum);
+					glTextureParameteri(textureB, GL_TEXTURE_WRAP_T, wrapEnum);
+				}
+				ImGui::DragFloat("Tiling", &bgSettings.tiling, 0.05f);
+				if (ImGui::ColorEdit3("Border Color", textureSettings.borderColor)) {
+					glTextureParameterfv(textureA, GL_TEXTURE_BORDER_COLOR, textureSettings.borderColor);
+				}
+				ImGui::SliderFloat("Distortion Strength", &bgSettings.distortionStrength, 0.0f, 1.0f);
+				ImGui::SliderFloat("Distortion Speed", &bgSettings.distortionSpeed, 0.0f, 1.0f);
+				ImGui::ColorEdit3("Glow Color", &bgSettings.glowColor.r);
 			}
-			if (ImGui::Combo("Filter Mode", &textureSettings.filterIndex, textureSettings.filterModes, IM_ARRAYSIZE(textureSettings.filterModes))) {
-				GLint filterEnum = textureSettings.filterModeEnums[textureSettings.filterIndex];
-				glTextureParameteri(textureA, GL_TEXTURE_MIN_FILTER, filterEnum);
-				glTextureParameteri(textureA, GL_TEXTURE_MAG_FILTER, filterEnum);
+			if (ImGui::CollapsingHeader("Character")) {
+				if (ImGui::Combo("Character Filter Mode", &charSettings.filterIndex, textureSettings.filterModes, IM_ARRAYSIZE(textureSettings.filterModes))) {
+					GLint filterEnum = textureSettings.filterModeEnums[charSettings.filterIndex];
+					glTextureParameteri(characterTexture, GL_TEXTURE_MIN_FILTER, filterEnum);
+					glTextureParameteri(characterTexture, GL_TEXTURE_MAG_FILTER, filterEnum);
+				}
+				ImGui::SliderFloat("Speed", &charSettings.characterSpeed, 0.0f, 10.0f);
+				ImGui::ColorEdit4("Character Color", &charSettings.characterColor.r);
 			}
-			if (ImGui::ColorEdit3("Border Color", textureSettings.borderColor)) {
-				glTextureParameterfv(textureA, GL_TEXTURE_BORDER_COLOR, textureSettings.borderColor);
-			}
-			ImGui::SliderFloat("BG Distortion Strength", &bgSettings.distortionStrength, 0.0f, 1.0f);
-			ImGui::SliderFloat("BG Distortion Speed", &bgSettings.distortionSpeed,0.0f,1.0f);
-			ImGui::ColorEdit3("BG Glow Color", &bgSettings.glowColor.r);
-			ImGui::ColorEdit4("Character Color", &characterColor.r);
+			
 			ImGui::End();
 
 			ImGui::Render();
