@@ -222,28 +222,35 @@ namespace ew {
 				 v.pos.x = cos(theta) * (outerRadius + cos(phi) * innerRadius);
 				 v.pos.y = sin(theta) * (outerRadius + cos(phi) * innerRadius);
 				 v.pos.z = sin(phi) * innerRadius;
-				 v.normal = ew::Normalize(ew::Vec3(cos(theta), sin(theta), sin(phi)));
+				 v.normal.x = cos(theta) * cos(phi);
+				 v.normal.y = sin(theta) * cos(phi);
+				 v.normal.z = sin(phi);
+				 v.normal = ew::Normalize(v.normal);
 				 v.uv = ew::Vec2((float)j / numRingSegments, (float)i / numRings);
 				 meshData->vertices.push_back(v);
 			 }
 		 }
 		 //INDICES
 		 //Stack
-		 for (size_t stack = 0; stack <= numRings - 1; stack++)
+		 for (size_t stack = 0; stack < numRings; stack++)
 		 {
 			 //Slice
 			 for (size_t slice = 0; slice <= numRingSegments; slice++)
 			 {
-				 int i1 = stack + (slice * numRingSegments);
-				 int i2 = (stack + 1) + (slice * numRingSegments);
-				 int i3 = stack + ((slice + 1) * numRingSegments);
-				 int i4 = (stack + 1) + ((slice + 1) * numRingSegments);
+				 int start = slice + stack * (numRingSegments+1);
+
+				 int i1 = start;
+				 int i2 = start + 1;
+				 int i3 = start + 1 + numRingSegments;
+				 int i4 = start + numRingSegments;
+
 				 meshData->indices.push_back(i1);
 				 meshData->indices.push_back(i3);
-				 meshData->indices.push_back(i4);
+				 meshData->indices.push_back(i2);
+
+				 meshData->indices.push_back(i3);
 				 meshData->indices.push_back(i1);
 				 meshData->indices.push_back(i4);
-				 meshData->indices.push_back(i2);
 			 }
 		 }
 	 }

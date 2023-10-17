@@ -19,9 +19,10 @@
 void processInput(GLFWwindow* window);
 void onCursorMoved(GLFWwindow* window, double xpos, double ypos);
 void onMouseButtonPressed(GLFWwindow* window, int button, int action, int mods);
+void onFramebufferResize(GLFWwindow* window, int width, int height);
 
-const int SCREEN_WIDTH = 1920;
-const int SCREEN_HEIGHT = 1080;
+int SCREEN_WIDTH = 1920;
+int SCREEN_HEIGHT = 1080;
 
 struct Camera {
 	float fov = 60.0f;
@@ -56,7 +57,7 @@ float deltaTime;
 struct Settings {
 	bool drawAsPoints;
 	bool wireFrame = false;
-	const char* debugModeNames[3] = { "Normals", "UVs", "Texture"};
+	const char* debugModeNames[4] = { "Normals", "UVs", "Texture", "Shaded"};
 	int debugModeIndex = 0;
 	int sphereSegments = 16;
 	int cylinderSegments = 16;
@@ -65,10 +66,10 @@ struct Settings {
 	int torusNumRings = 32;
 	int torusRingSegments = 32;
 	float torusInnerRadius = 0.25f;
-	float torusOuterRadius = 1.0f;
+	float torusOuterRadius = 0.5f;
 
 	ew::Vec3 bgColor = ew::Vec3(0.1f);
-	ew::Vec3 lightDir = ew::Vec3(0, 1, 0);
+	ew::Vec3 lightDir = ew::Vec3(0, -1, 0);
 }settings;
 
 void drawMesh(const ew::Shader& shader, const ew::Mesh& mesh, const ew::Transform& transform, bool drawPoints) {
@@ -97,6 +98,7 @@ int main() {
 	glfwMakeContextCurrent(window);
 	glfwSetCursorPosCallback(window, onCursorMoved);
 	glfwSetMouseButtonCallback(window, onMouseButtonPressed);
+	glfwSetFramebufferSizeCallback(window, onFramebufferResize);
 	if (!gladLoadGL(glfwGetProcAddress)) {
 		printf("GLAD Failed to load GL headers");
 		return 1;
@@ -135,7 +137,7 @@ int main() {
 	sphereTransform.position = ew::Vec3(2.0f, 0.0f, 0.0f);
 	cylinderTransform.position = ew::Vec3(-2.0f, 0.0f, 0.0f);
 	planeTransform.position = ew::Vec3(4.0f, -0.5f, 0.0f);
-	torusTransform.position = ew::Vec3(7.0f, 0.0f, 0.0f);
+	torusTransform.position = ew::Vec3(6.0f, 0.0f, 0.0f);
 
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
@@ -314,4 +316,9 @@ void onMouseButtonPressed(GLFWwindow* window, int button, int action, int mods)
 		}
 	}
 	
+}
+void onFramebufferResize(GLFWwindow* window, int width, int height) {
+	glViewport(0, 0, width, height);
+	SCREEN_WIDTH = width;
+	SCREEN_HEIGHT = height;
 }
