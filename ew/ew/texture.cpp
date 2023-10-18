@@ -14,6 +14,7 @@ static int getTextureFormat(int numComponents) {
 }
 namespace ew {
 	unsigned int loadTexture(const char* filePath, int wrapMode, int filterMode) {
+		stbi_set_flip_vertically_on_load(true);
 		int width, height, numComponents;
 		unsigned char* data = stbi_load(filePath, &width, &height, &numComponents, 0);
 		if (data == NULL) {

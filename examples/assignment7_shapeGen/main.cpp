@@ -33,7 +33,7 @@ struct Camera {
 
 };
 struct CameraController {
-	float moveSpeed = 5.0f;
+	float moveSpeed = 3.0f;
 	float yaw = -90.0f;
 	float pitch = 0.0f;
 	double prevMouseX, prevMouseY;
@@ -57,18 +57,19 @@ float deltaTime;
 struct Settings {
 	bool drawAsPoints;
 	bool wireFrame = false;
-	const char* debugModeNames[4] = { "Normals", "UVs", "Texture", "Shaded"};
-	int debugModeIndex = 0;
+	const char* debugModeNames[5] = { "Normals", "UVs", "Texture", "Shaded", "Black"};
+	int debugModeIndex = 4;
 	int sphereSegments = 16;
+	bool sphereMethod = 0;
+
 	int cylinderSegments = 16;
 	int planeSegments = 10;
-
 	int torusNumRings = 32;
 	int torusRingSegments = 32;
 	float torusInnerRadius = 0.25f;
 	float torusOuterRadius = 0.5f;
 
-	ew::Vec3 bgColor = ew::Vec3(0.1f);
+	ew::Vec3 bgColor = ew::Vec3(1.0f);
 	ew::Vec3 lightDir = ew::Vec3(0, -1, 0);
 }settings;
 
@@ -104,6 +105,7 @@ int main() {
 		return 1;
 	}
 
+	glfwSwapInterval(1);
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
@@ -111,7 +113,7 @@ int main() {
 
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
-	glPointSize(3);
+	glPointSize(5);
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
 
@@ -132,7 +134,7 @@ int main() {
 	torusMesh.load(torusMeshData);
 
 	ew::Shader shader("assets/unlit.vert", "assets/unlit.frag");
-	unsigned int texture = ew::loadTexture("assets/bricks_color.jpg", GL_REPEAT, GL_LINEAR_MIPMAP_LINEAR);
+	unsigned int texture = ew::loadTexture("assets/earth_8k.jpg", GL_REPEAT, GL_LINEAR_MIPMAP_LINEAR);
 
 	sphereTransform.position = ew::Vec3(2.0f, 0.0f, 0.0f);
 	cylinderTransform.position = ew::Vec3(-2.0f, 0.0f, 0.0f);
@@ -211,10 +213,16 @@ int main() {
 				glPolygonMode(GL_FRONT_AND_BACK, settings.wireFrame ? GL_LINE : GL_FILL);
 			}
 			ImGui::SliderFloat3("Light Dir", &settings.lightDir.x, -1.0f, 1.0f);
-
+			
 			if (ImGui::CollapsingHeader("Bonus - Dynamic")) {
-				if (ImGui::DragInt("Sphere Segments", &settings.sphereSegments, 1, 3, 512) && settings.sphereSegments >= 3) {
-					ew::createSphere(0.5f, settings.sphereSegments, &sphereMeshData);
+				bool sphereChanged = false;
+				sphereChanged |= (ImGui::DragInt("Sphere Segments", &settings.sphereSegments, 1, 3, 512) && settings.sphereSegments >= 3);
+				sphereChanged |= ImGui::Checkbox("Sphere Method", &settings.sphereMethod);
+				if (sphereChanged) {
+					if (settings.sphereMethod == 0)
+						ew::createSphere(0.5f, settings.sphereSegments, &sphereMeshData);
+					else
+						ew::createSphereOld(0.5f, settings.sphereSegments, &sphereMeshData);
 					sphereMesh.load(sphereMeshData);
 				}
 				if (ImGui::DragInt("Cylinder Segments", &settings.cylinderSegments, 1, 3, 512) && settings.cylinderSegments >= 3) {

@@ -44,7 +44,7 @@ namespace ew {
 		createCubeFace(ew::Vec3{ 0.0f,-1.0f,0.0f }, size, mesh); //Bottom
 		createCubeFace(ew::Vec3{ 0.0f,0.0f,-1.0f }, size, mesh); //Back
 	 }
-	 void createSphere(float radius, int numSegments, MeshData* mesh)
+	 void createSphereOld(float radius, int numSegments, MeshData* mesh)
 	 {
 		 mesh->vertices.clear();
 		 mesh->indices.clear();
@@ -54,20 +54,20 @@ namespace ew {
 		 float thetaStep = (2 * PI) / numSegments; //Horizontal angle 
 		 float phiStep = PI / numSegments; //Vertical angle
 		 //Row
-		 for (size_t i = 1; i < numSegments; i++)
+		 for (size_t row = 1; row < numSegments; row++)
 		 {
-			 float phi = i * phiStep;
+			 float phi = row * phiStep;
 			 //Column
-			 for (size_t j = 0; j <= numSegments; j++)
+			 for (size_t col = 0; col <= numSegments; col++)
 			 {
-				 float theta = j * thetaStep;
+				 float theta = col * thetaStep;
 				 float x = cos(theta) * sin(phi);
 				 float y = cos(phi);
 				 float z = sin(theta) * sin(phi);
 				 Vertex vertex;
 				 vertex.pos = Vec3(x, y, z) * radius;
 				 vertex.normal = Vec3(x, y, z);
-				 vertex.uv = Vec2((float)j / numSegments, 1.0 - (float)i / numSegments);
+				 vertex.uv = Vec2((float)col / numSegments, 1.0 - (float)row / numSegments);
 				 mesh->vertices.push_back(vertex);
 			 }
 		 }
@@ -82,20 +82,21 @@ namespace ew {
 			 mesh->indices.push_back(i+1);
 		 }
 		 //Rows of quads
-		 int start = 1; //Skip top vertex
-		 int ringVertexCount = numSegments + 1;
-		 for (size_t i = 0; i < numSegments - 2; i++)
+		 int sideStart = 1; //Starting index of first row
+		 int columns = numSegments + 1;
+		 for (size_t row = 0; row < numSegments - 2; row++)
 		 {
-			 for (size_t j = 0; j < numSegments; j++)
+			 for (size_t col = 0; col < numSegments; col++)
 			 {
+				 int start = sideStart + row * columns + col;
 				 //Triangle 1
-				 mesh->indices.push_back(start + i * ringVertexCount + j);
-				 mesh->indices.push_back(start + i * ringVertexCount + j + 1);
-				 mesh->indices.push_back(start + (i + 1) * ringVertexCount + j);
-				 //Triangle 2
-				 mesh->indices.push_back(start + (i + 1) * ringVertexCount + j);
-				 mesh->indices.push_back(start + i * ringVertexCount + j + 1);
-				 mesh->indices.push_back(start + (i+1) * ringVertexCount + j + 1);
+				 mesh->indices.push_back(start);
+				 mesh->indices.push_back(start + 1);
+				 mesh->indices.push_back(start + columns);
+				 //Triangle 2 
+				 mesh->indices.push_back(start + columns);
+				 mesh->indices.push_back(start + 1);
+				 mesh->indices.push_back(start + columns + 1);
 			 }
 		 }
 		 //Bottom cap
@@ -105,6 +106,71 @@ namespace ew {
 			 mesh->indices.push_back(bottomIndex);
 			 mesh->indices.push_back(bottomIndex - i);
 			 mesh->indices.push_back(bottomIndex - i + 1);
+		 }
+	 }
+	 void createSphere(float radius, int numSegments, MeshData* mesh)
+	 {
+		 mesh->vertices.clear();
+		 mesh->indices.clear();
+
+		 float thetaStep = (2 * PI) / numSegments; //Horizontal angle 
+		 float phiStep = PI / numSegments; //Vertical angle
+
+		 //VERTICES---------------
+		 //Row
+		 for (size_t row = 0; row <= numSegments; row++)
+		 {
+			 float phi = row * phiStep;
+			 //Column
+			 for (size_t col = 0; col <= numSegments; col++)
+			 {
+				 float theta = col * thetaStep;
+				 float x = cos(theta) * sin(phi);
+				 float y = cos(phi);
+				 float z = sin(theta) * sin(phi);
+				 Vertex vertex;
+				 vertex.pos = Vec3(x, y, z) * radius;
+				 vertex.normal = Vec3(x, y, z);
+				 vertex.uv = Vec2((float)col / numSegments, 1.0 - (float)row / numSegments);
+				 mesh->vertices.push_back(vertex);
+			 }
+		 }
+
+		 //INDICES-----------------
+		 int topRowStart = numSegments + 1;
+		 //Top cap
+		 for (size_t i = 0; i < numSegments; i++)
+		 {
+			 mesh->indices.push_back(topRowStart + i);
+			 mesh->indices.push_back(i); //Center
+			 mesh->indices.push_back(topRowStart + i + 1);
+		 }
+		 
+		 //Rows of quads
+		 int columns = numSegments + 1;
+		 for (size_t row = 1; row < numSegments - 1; row++)
+		 {
+			 for (size_t col = 0; col < numSegments; col++)
+			 {
+				 int start = row * columns + col;
+				 //Triangle 1
+				 mesh->indices.push_back(start);
+				 mesh->indices.push_back(start + 1);
+				 mesh->indices.push_back(start + columns);
+				 //Triangle 2 
+				 mesh->indices.push_back(start + columns);
+				 mesh->indices.push_back(start + 1);
+				 mesh->indices.push_back(start + columns + 1);
+			 }
+		 }
+		 //Bottom cap
+		 int bottomCenterStart = mesh->vertices.size() - numSegments - 2;
+		 int bottomRowStart = bottomCenterStart - numSegments - 1;
+		 for (size_t i = 0; i <= numSegments; i++)
+		 {
+			 mesh->indices.push_back(bottomRowStart + i);
+			 mesh->indices.push_back(bottomRowStart + i + 1); 
+			 mesh->indices.push_back(bottomCenterStart + i); //Center
 		 }
 	 }
 	 void createRingVertices(float y, float radius, int numSegments, bool isCap, MeshData* mesh) {
@@ -149,16 +215,16 @@ namespace ew {
 			 mesh->indices.push_back(i + 1);
 		 }
 		 //Side quads
-		 int ringVertexCount = numSegments + 1;
+		 int numColumns = numSegments + 1;
 		 for (size_t i = 0; i <= numSegments; i++)
 		 {
 			 int start = sideStart + i; //Starting index of quad
 			 mesh->indices.push_back(start);
 			 mesh->indices.push_back(start + 1);
-			 mesh->indices.push_back(start + ringVertexCount);
-			 mesh->indices.push_back(start + ringVertexCount);
+			 mesh->indices.push_back(start + numColumns);
+			 mesh->indices.push_back(start + numColumns);
 			 mesh->indices.push_back(start + 1);
-			 mesh->indices.push_back(start + ringVertexCount+1);
+			 mesh->indices.push_back(start + numColumns+1);
 		 }
 		 //Bottom cap
 		 unsigned int bottomIndex = mesh->vertices.size() - 1;
@@ -169,17 +235,17 @@ namespace ew {
 			 mesh->indices.push_back(bottomIndex - i + 1);
 		 }
 	 }
-	 void createPlane(float size, int numSegments, MeshData* mesh)
+	 void createPlane(float size, int subdivisions, MeshData* mesh)
 	 {
 		 mesh->vertices.clear();
 		 mesh->indices.clear();
 		 //VERTICES
-		 for (size_t i = 0; i <= numSegments; i++)
+		 for (size_t row = 0; row <= subdivisions; row++)
 		 {
-			 for (size_t j = 0; j <= numSegments; j++)
+			 for (size_t col = 0; col <= subdivisions; col++)
 			 {
-				 float u = (float)i / numSegments;
-				 float v = (float)j / numSegments;
+				 float u = (float)col / subdivisions;
+				 float v = (float)row / subdivisions;
 				 Vertex vertex;
 				 vertex.pos = Vec3(-size/2 + size * u, 0.0f, -(-size / 2 + size * v));
 				 vertex.normal = Vec3(0.0f, 1.0f, 0.0f);
@@ -188,18 +254,18 @@ namespace ew {
 			 }
 		 }
 		 //INDICES
-		 int numColumns = numSegments + 1;
-		 for (size_t i = 0; i < numSegments; i++)
+		 int numColumns = subdivisions + 1;
+		 for (size_t row = 0; row < subdivisions; row++)
 		 {
-			 for (size_t j = 0; j < numSegments; j++)
+			 for (size_t col = 0; col < subdivisions; col++)
 			 {
-				 int start = i + j * numColumns;
+				 int start = row + col * numColumns;
 				 //Triangle 1
 				 mesh->indices.push_back(start);
-				 mesh->indices.push_back(start + numColumns);
-				 mesh->indices.push_back(start + numColumns + 1);
-				 mesh->indices.push_back(start + numColumns + 1);
 				 mesh->indices.push_back(start + 1);
+				 mesh->indices.push_back(start + numColumns + 1);
+				 mesh->indices.push_back(start + numColumns + 1);
+				 mesh->indices.push_back(start + numColumns);
 				 mesh->indices.push_back(start);
 			 }
 		 }

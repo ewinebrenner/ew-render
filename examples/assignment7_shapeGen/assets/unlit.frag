@@ -8,6 +8,7 @@ in Surface{
 uniform int _DebugMode;
 uniform sampler2D _Texture;
 uniform vec3 _LightDir = vec3(0,1,0);
+uniform vec3 _FlatColor = vec3(0);
 
 void main(){
 
@@ -18,9 +19,12 @@ void main(){
 		FragColor = vec4(abs(normal),1.0);
 	}else if (_DebugMode == 1){
 		FragColor = vec4(uv.x,uv.y,0.0,1.0);
-	}else if (_DebugMode > 1){
+	}else if (_DebugMode == 2){
 		FragColor = texture(_Texture,uv).rgba;
-		if (_DebugMode == 3)
-			FragColor.rgb *= 0.3 + 0.7 * max(dot(normal,normalize(-_LightDir)),0.0);
+	}else if (_DebugMode == 3){
+		FragColor = texture(_Texture,uv).rgba;
+		FragColor.rgb *= 0.3 + 0.7 * max(dot(normal,normalize(-_LightDir)),0.0);
+	}else if (_DebugMode == 4){
+		FragColor.rgb = _FlatColor;
 	}
 }
