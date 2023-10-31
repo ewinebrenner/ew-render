@@ -29,6 +29,7 @@ struct AppTransformSettings {
 	ew::Vec3 translateSnap = 0.5f;
 	float rotateSnap = 1.0f;
 	float scaleSnap = 0.1f;
+	bool drawGrid = true;
 }appTransformSettings;
 
 void processInput(GLFWwindow* window);
@@ -187,8 +188,8 @@ int main() {
 	glDepthFunc(GL_LESS);
 	glPointSize(3);
 	
-	//glEnable(GL_CULL_FACE);
-	//glCullFace(GL_BACK);
+	glEnable(GL_CULL_FACE);
+	glCullFace(GL_BACK);
 
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
@@ -207,6 +208,7 @@ int main() {
 	ew::Shader litShader("assets/lit.vert", "assets/lit.frag");
 	ew::Shader pickingShader("assets/objectPicking.vert", "assets/objectPicking.frag");
 	ew::Shader particleShader("assets/particle.vert", "assets/particle.frag");
+	ew::Shader gridShader("assets/grid.vert", "assets/grid.frag");
 
 	unsigned int texture = ew::loadTexture("assets/bricks_color.jpg", GL_REPEAT, GL_LINEAR_MIPMAP_LINEAR);
 
@@ -239,6 +241,7 @@ int main() {
 
 		glClearColor(camera.m_bgColor.x, camera.m_bgColor.y, camera.m_bgColor.z, camera.m_bgColor.w);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 
 		//The current time in seconds this frame
 		float time = (float)glfwGetTime();
@@ -265,6 +268,7 @@ int main() {
 		ew::Mat4 projection = ew::GetProjectionMatrix(camera);
 
 		ew::Mat4 viewProjection = projection * view;
+
 
 		//Set uniforms
 		litShader.use();
@@ -296,8 +300,18 @@ int main() {
 		if (particleSystem.m_enabled) {
 			particleSystem.draw(deltaTime, &particleShader, view, projection, camera.m_position);
 		}
-		
+
+		//Draw grid
+		if (appTransformSettings.drawGrid) {
+			gridShader.use();
+			gridShader.setMat4("_ViewProjection", viewProjection);
+			glEnable(GL_BLEND);
+			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			glDrawArrays(GL_TRIANGLES, 0, 6);
+		}
+
 		//Render pickable meshes to object picking framebuffer
+		if (glfwGetMouseButton(window,0))
 		{
 			pickingFramebuffer.bind();
 			glClearColor(0, 0, 0, 0);
@@ -323,6 +337,7 @@ int main() {
 
 			ImGui::Begin("Settings");
 			ImGui::Text("FPS:%f", fpsCounter.getFPS());
+			ImGui::Checkbox("Draw Grid", &appTransformSettings.drawGrid);
 			if (ImGui::CollapsingHeader("Light")) {
 				ImGui::ColorEdit4("Color", &light.color.x);
 			}

@@ -121,7 +121,7 @@ int main() {
 	ew::Shader unlitShader("assets/unlit.vert", "assets/unlit.frag");
 	ew::Shader litShader("assets/lit.vert", "assets/lit.frag");
 
-	unsigned int texture = ew::loadTexture("assets/bricks_color.jpg", GL_REPEAT, GL_LINEAR_MIPMAP_LINEAR);
+	unsigned int texture = ew::loadTexture("assets/earth_8k.jpg", GL_REPEAT, GL_LINEAR_MIPMAP_LINEAR);
 
 	//Set up scene
 	sphereTransform.position = ew::Vec3(2.0f, 0.0f, 0.0f);

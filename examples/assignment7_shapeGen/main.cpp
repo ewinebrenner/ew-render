@@ -54,9 +54,12 @@ CameraController cameraController;
 float prevTime;
 float deltaTime;
 
+ew::Vec3 clipPlaneNormal = ew::Vec3(0, 1, 0);
+ew::Vec3 clipPlaneOrigin = ew::Vec3(0, 0, 0);
+
 struct Settings {
 	bool drawAsPoints;
-	bool wireFrame = false;
+	bool wireFrame = true;
 	const char* debugModeNames[5] = { "Normals", "UVs", "Texture", "Shaded", "Black"};
 	int debugModeIndex = 4;
 	int sphereSegments = 16;
@@ -71,6 +74,8 @@ struct Settings {
 
 	ew::Vec3 bgColor = ew::Vec3(1.0f);
 	ew::Vec3 lightDir = ew::Vec3(0, -1, 0);
+	const char* textures[2] = { "Brick", "Earth" };
+	int textureIndex = 0;
 }settings;
 
 void drawMesh(const ew::Shader& shader, const ew::Mesh& mesh, const ew::Transform& transform, bool drawPoints) {
@@ -116,6 +121,7 @@ int main() {
 	glPointSize(5);
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
+	glPolygonMode(GL_FRONT_AND_BACK, settings.wireFrame ? GL_LINE : GL_FILL);
 
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
@@ -134,7 +140,8 @@ int main() {
 	torusMesh.load(torusMeshData);
 
 	ew::Shader shader("assets/unlit.vert", "assets/unlit.frag");
-	unsigned int texture = ew::loadTexture("assets/earth_8k.jpg", GL_REPEAT, GL_LINEAR_MIPMAP_LINEAR);
+	unsigned int brickTexture = ew::loadTexture("assets/bricks_color.jpg", GL_REPEAT, GL_LINEAR_MIPMAP_LINEAR);
+	unsigned int earthTexture = ew::loadTexture("assets/earth_8k.jpg", GL_REPEAT, GL_LINEAR_MIPMAP_LINEAR);
 
 	sphereTransform.position = ew::Vec3(2.0f, 0.0f, 0.0f);
 	cylinderTransform.position = ew::Vec3(-2.0f, 0.0f, 0.0f);
@@ -176,8 +183,10 @@ int main() {
 		shader.setMat4("_ViewProjection", viewProjection);
 		shader.setVec3("_LightDir", settings.lightDir);
 		shader.setInt("_DebugMode", settings.debugModeIndex);
+		shader.setVec3("_ClipPlaneOrigin", clipPlaneOrigin);
+		shader.setVec3("_ClipPlaneNormal", clipPlaneNormal);
 		glActiveTexture(0);
-		glBindTexture(GL_TEXTURE_2D, texture);
+		glBindTexture(GL_TEXTURE_2D, settings.textureIndex+1);
 
 		shader.setInt("_Texture", 0);
 
@@ -207,13 +216,16 @@ int main() {
 				ImGui::DragFloat("Move speed", &cameraController.moveSpeed, 0.1f);
 			}
 			ImGui::ColorEdit3("BG Color", &settings.bgColor.x);
+			ImGui::Combo("Texture", &settings.textureIndex, settings.textures, IM_ARRAYSIZE(settings.textures));
 			ImGui::Combo("Shading Mode", &settings.debugModeIndex, settings.debugModeNames, IM_ARRAYSIZE(settings.debugModeNames));
 			ImGui::Checkbox("Point Drawing", &settings.drawAsPoints);
 			if (ImGui::Checkbox("Wireframe", &settings.wireFrame)) {
 				glPolygonMode(GL_FRONT_AND_BACK, settings.wireFrame ? GL_LINE : GL_FILL);
 			}
 			ImGui::SliderFloat3("Light Dir", &settings.lightDir.x, -1.0f, 1.0f);
-			
+			ImGui::SliderFloat3("Clip Plane Normal", &clipPlaneNormal.x, -1.0f, 1.0f);
+			ImGui::DragFloat3("Clip Plane Origin", &clipPlaneOrigin.x, 0.1f);
+
 			if (ImGui::CollapsingHeader("Bonus - Dynamic")) {
 				bool sphereChanged = false;
 				sphereChanged |= (ImGui::DragInt("Sphere Segments", &settings.sphereSegments, 1, 3, 512) && settings.sphereSegments >= 3);

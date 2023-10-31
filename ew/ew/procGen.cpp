@@ -137,13 +137,13 @@ namespace ew {
 		 }
 
 		 //INDICES-----------------
-		 int topRowStart = numSegments + 1;
 		 //Top cap
+		 int topSidesStart = numSegments + 1;
 		 for (size_t i = 0; i < numSegments; i++)
 		 {
-			 mesh->indices.push_back(topRowStart + i);
+			 mesh->indices.push_back(topSidesStart + i);
 			 mesh->indices.push_back(i); //Center
-			 mesh->indices.push_back(topRowStart + i + 1);
+			 mesh->indices.push_back(topSidesStart + i + 1);
 		 }
 		 
 		 //Rows of quads
@@ -208,11 +208,13 @@ namespace ew {
 		 mesh->vertices.push_back({ Vec3(0.0f,-halfHeight,0.0f),Vec3(0,-1,0),Vec2(0.5)});
 		 //INDICES-----------
 		 //Top cap
-		 for (size_t i = 1; i <= numSegments; i++)
+		 int start = 1;
+		 int center = 0;
+		 for (size_t i = 0; i <= numSegments; i++)
 		 {
-			 mesh->indices.push_back(i);
-			 mesh->indices.push_back(0);
-			 mesh->indices.push_back(i + 1);
+			 mesh->indices.push_back(start + i);
+			 mesh->indices.push_back(center);
+			 mesh->indices.push_back(start + i + 1);
 		 }
 		 //Side quads
 		 int numColumns = numSegments + 1;
@@ -227,12 +229,12 @@ namespace ew {
 			 mesh->indices.push_back(start + numColumns+1);
 		 }
 		 //Bottom cap
-		 unsigned int bottomIndex = mesh->vertices.size() - 1;
+		 center = mesh->vertices.size() - 1;
 		 for (size_t i = 1; i <= numSegments + 1; i++)
 		 {
-			 mesh->indices.push_back(bottomIndex);
-			 mesh->indices.push_back(bottomIndex - i);
-			 mesh->indices.push_back(bottomIndex - i + 1);
+			 mesh->indices.push_back(center);
+			 mesh->indices.push_back(center - i);
+			 mesh->indices.push_back(center - i + 1);
 		 }
 	 }
 	 void createPlane(float size, int subdivisions, MeshData* mesh)

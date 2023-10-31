@@ -10,9 +10,25 @@ out Surface{
 
 uniform mat4 _Model;
 uniform mat4 _ViewProjection;
-
+uniform vec3 _ClipPlaneOrigin;
+uniform vec3 _ClipPlaneNormal;
+//#define CLIPPING_PLANE_ENABLED
 void main(){
 	vs_out.UV = vUV;
 	vs_out.Normal = vNormal;
-	gl_Position = _ViewProjection * _Model * vec4(vPos,1.0);
+
+	vec4 worldPos = _Model * vec4(vPos,1.0);
+	vec3 p = worldPos.xyz;
+
+	#if CLIPPING_PLANE_ENABLED
+	vec3 planeNormal = normalize(_ClipPlaneNormal);
+	float d = dot(planeNormal,(p - _ClipPlaneOrigin));
+	if (d > 0){
+		p = p - planeNormal * d;
+		//if (dot(vs_out.Normal,planeNormal)>0)
+		vs_out.Normal = planeNormal;
+	}
+	#endif
+	
+	gl_Position = _ViewProjection * vec4(p,1.0);
 }
