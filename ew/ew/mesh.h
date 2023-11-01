@@ -2,10 +2,14 @@
 #include "ewMath/ewMath.h"
 
 namespace ew {
+#define MAX_BONE_INFLUENCE 4
 	struct Vertex {
 		ew::Vec3 pos;
 		ew::Vec3 normal;
 		ew::Vec2 uv;
+		ew::Vec3 tangent;
+		int boneIds[MAX_BONE_INFLUENCE];
+		float boneWeights[MAX_BONE_INFLUENCE];
 	};
 
 	struct MeshData {

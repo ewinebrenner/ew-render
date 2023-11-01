@@ -26,6 +26,18 @@ namespace ew {
 			glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (const void*)(offsetof(Vertex, uv)));
 			glEnableVertexAttribArray(2);
 
+			//Tangent attribute
+			glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (const void*)(offsetof(Vertex, tangent)));
+			glEnableVertexAttribArray(3);
+
+			//Bone IDs attribute
+			glVertexAttribIPointer(4, 4, GL_INT, sizeof(Vertex), (const void*)(offsetof(Vertex, boneIds)));
+			glEnableVertexAttribArray(4);
+
+			//Bone Weights attribute
+			glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), (const void*)(offsetof(Vertex, boneWeights)));
+			glEnableVertexAttribArray(5);
+
 			m_initialized = true;
 		}
 
