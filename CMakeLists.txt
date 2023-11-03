@@ -20,6 +20,7 @@ include(external/cpm.cmake)
 # add libraries
 include(external/glfw.cmake)
 include(external/imgui.cmake)
+include(external/assimp.cmake)
 
 add_subdirectory(ew)
 add_subdirectory(examples/assignment1_helloTriangle)

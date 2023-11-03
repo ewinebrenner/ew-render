@@ -18,7 +18,7 @@
 #include <ew/ewMath/splines.h>
 #include <ew/particles.h>
 #include <ew/fpsCounter.h>
-
+#include <ew/modelLoading.h>
 
 #include <ew/external/imguizmo/ImGuizmo.h>
 
@@ -177,10 +177,15 @@ int main() {
 		return 1;
 	}
 
+
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
 	ImGui_ImplOpenGL3_Init();
+
+
+	//Load models
+	//ew::read_model("assets/WormDude.dae");
 
 	camera.m_position = ew::Vec3(0.0f, 0.0f, 10.0f);
 
@@ -206,9 +211,9 @@ int main() {
 	
 	ew::Shader unlitShader("assets/unlit.vert", "assets/unlit.frag");
 	ew::Shader litShader("assets/lit.vert", "assets/lit.frag");
-	ew::Shader pickingShader("assets/objectPicking.vert", "assets/objectPicking.frag");
+	ew::Shader pickingShader("assets/engine/shaders/objectPicking.vert", "assets/engine/shaders/objectPicking.frag");
 	ew::Shader particleShader("assets/particle.vert", "assets/particle.frag");
-	ew::Shader gridShader("assets/grid.vert", "assets/grid.frag");
+	ew::Shader gridShader("assets/engine/shaders/grid.vert", "assets/engine/shaders/grid.frag");
 
 	unsigned int texture = ew::loadTexture("assets/bricks_color.jpg", GL_REPEAT, GL_LINEAR_MIPMAP_LINEAR);
 
