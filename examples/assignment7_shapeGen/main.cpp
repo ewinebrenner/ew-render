@@ -42,11 +42,6 @@ struct CameraController {
 };
 
 const int NUM_CUBES = 8;
-ew::Transform splineTransform;
-ew::Transform sphereTransform;
-ew::Transform cylinderTransform;
-ew::Transform planeTransform;
-ew::Transform torusTransform;
 
 Camera camera;
 CameraController cameraController;
@@ -71,6 +66,10 @@ struct Settings {
 	int torusRingSegments = 32;
 	float torusInnerRadius = 0.25f;
 	float torusOuterRadius = 0.5f;
+
+	float coneRadius = 0.5f;
+	float coneHeight = 0.5f;
+	int coneSegments = 32;
 
 	ew::Vec3 bgColor = ew::Vec3(1.0f);
 	ew::Vec3 lightDir = ew::Vec3(0, -1, 0);
@@ -125,28 +124,38 @@ int main() {
 
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-	ew::MeshData cubeMeshData, sphereMeshData, cylinderMeshData, planeMeshData, torusMeshData;
+	ew::MeshData cubeMeshData, sphereMeshData, cylinderMeshData, planeMeshData, torusMeshData, coneMeshData;
 	ew::createCube(0.5f,&cubeMeshData);
 	ew::createSphere(0.5f, settings.sphereSegments, &sphereMeshData);
 	ew::createCylinder(1.0f, 0.5f, settings.cylinderSegments, &cylinderMeshData);
 	ew::createPlane(1.0f, settings.planeSegments, &planeMeshData);
 	ew::createTorus(settings.torusInnerRadius,settings.torusOuterRadius,settings.torusNumRings, settings.torusRingSegments, &torusMeshData);
+	ew::createCone(settings.coneHeight, settings.coneRadius, settings.coneSegments, &coneMeshData);
 
-	ew::Mesh cubeMesh, sphereMesh, cylinderMesh, planeMesh, torusMesh;
+	ew::Mesh cubeMesh, sphereMesh, cylinderMesh, planeMesh, torusMesh, coneMesh;
 	cubeMesh.load(cubeMeshData);
 	sphereMesh.load(sphereMeshData);
 	cylinderMesh.load(cylinderMeshData);
 	planeMesh.load(planeMeshData);
 	torusMesh.load(torusMeshData);
+	coneMesh.load(coneMeshData);
 
 	ew::Shader shader("assets/unlit.vert", "assets/unlit.frag");
 	unsigned int brickTexture = ew::loadTexture("assets/bricks_color.jpg", GL_REPEAT, GL_LINEAR_MIPMAP_LINEAR);
 	unsigned int earthTexture = ew::loadTexture("assets/earth_8k.jpg", GL_REPEAT, GL_LINEAR_MIPMAP_LINEAR);
 
+	ew::Transform splineTransform;
+	ew::Transform sphereTransform;
+	ew::Transform cylinderTransform;
+	ew::Transform planeTransform;
+	ew::Transform torusTransform;
+	ew::Transform coneTransform;
+
 	sphereTransform.position = ew::Vec3(2.0f, 0.0f, 0.0f);
 	cylinderTransform.position = ew::Vec3(-2.0f, 0.0f, 0.0f);
 	planeTransform.position = ew::Vec3(4.0f, -0.5f, 0.0f);
 	torusTransform.position = ew::Vec3(6.0f, 0.0f, 0.0f);
+	coneTransform.position = ew::Vec3(-4.0f, 0.0f, 0.0f);
 
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
@@ -195,6 +204,7 @@ int main() {
 		drawMesh(shader, cylinderMesh, cylinderTransform, settings.drawAsPoints);
 		drawMesh(shader, planeMesh, planeTransform, settings.drawAsPoints);
 		drawMesh(shader, torusMesh, torusTransform, settings.drawAsPoints);
+		drawMesh(shader, coneMesh, coneTransform, settings.drawAsPoints);
 
 		//Render UI
 		{
@@ -253,6 +263,14 @@ int main() {
 				if (torusChanged) {
 					ew::createTorus(settings.torusInnerRadius, settings.torusOuterRadius, settings.torusNumRings, settings.torusRingSegments, &torusMeshData);
 					torusMesh.load(torusMeshData);
+				}
+
+				bool coneChanged = false;
+				coneChanged |= (ImGui::DragFloat("Cone Radius", &settings.coneRadius, 0.05f));
+				coneChanged |= (ImGui::DragFloat("Cone Height", &settings.coneHeight, 0.05f));
+				if (coneChanged) {
+					ew::createCone(settings.coneHeight, settings.coneRadius,settings.coneSegments, &coneMeshData);
+					coneMesh.load(coneMeshData);
 				}
 			}
 			
