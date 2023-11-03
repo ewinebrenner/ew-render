@@ -70,6 +70,8 @@ struct Settings {
 	float coneRadius = 0.5f;
 	float coneHeight = 0.5f;
 	int coneSegments = 32;
+	int coneStacks = 4;
+	float coneStackCurve = 0.2f;
 
 	ew::Vec3 bgColor = ew::Vec3(1.0f);
 	ew::Vec3 lightDir = ew::Vec3(0, -1, 0);
@@ -130,7 +132,7 @@ int main() {
 	ew::createCylinder(1.0f, 0.5f, settings.cylinderSegments, &cylinderMeshData);
 	ew::createPlane(1.0f, settings.planeSegments, &planeMeshData);
 	ew::createTorus(settings.torusInnerRadius,settings.torusOuterRadius,settings.torusNumRings, settings.torusRingSegments, &torusMeshData);
-	ew::createCone(settings.coneHeight, settings.coneRadius, settings.coneSegments, &coneMeshData);
+	ew::createCone(settings.coneHeight, settings.coneRadius, settings.coneSegments, settings.coneStacks, settings.coneStackCurve, &coneMeshData);
 
 	ew::Mesh cubeMesh, sphereMesh, cylinderMesh, planeMesh, torusMesh, coneMesh;
 	cubeMesh.load(cubeMeshData);
@@ -194,6 +196,7 @@ int main() {
 		shader.setInt("_DebugMode", settings.debugModeIndex);
 		shader.setVec3("_ClipPlaneOrigin", clipPlaneOrigin);
 		shader.setVec3("_ClipPlaneNormal", clipPlaneNormal);
+		shader.setVec3("_CameraPosition", camera.position);
 		glActiveTexture(0);
 		glBindTexture(GL_TEXTURE_2D, settings.textureIndex+1);
 
@@ -268,8 +271,11 @@ int main() {
 				bool coneChanged = false;
 				coneChanged |= (ImGui::DragFloat("Cone Radius", &settings.coneRadius, 0.05f));
 				coneChanged |= (ImGui::DragFloat("Cone Height", &settings.coneHeight, 0.05f));
+				coneChanged |= (ImGui::SliderInt("Cone Ring Segments", &settings.coneSegments,3,256));
+				coneChanged |= (ImGui::SliderInt("Cone Stack Segments", &settings.coneStacks,1,32));
+				coneChanged |= (ImGui::SliderFloat("Cone Stack Curve", &settings.coneStackCurve, 0.01f, 1.0f));
 				if (coneChanged) {
-					ew::createCone(settings.coneHeight, settings.coneRadius,settings.coneSegments, &coneMeshData);
+					ew::createCone(settings.coneHeight, settings.coneRadius,settings.coneSegments, settings.coneStacks,settings.coneStackCurve, &coneMeshData);
 					coneMesh.load(coneMeshData);
 				}
 			}

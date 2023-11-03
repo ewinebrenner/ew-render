@@ -1,6 +1,7 @@
 #include "procGen.h"
 
 #include <stdlib.h>
+#include <assert.h>
 
 namespace ew {
 	static void createCubeFace(ew::Vec3 normal, float size, MeshData* mesh) {
@@ -237,37 +238,52 @@ namespace ew {
 			 mesh->indices.push_back(center - i + 1);
 		 }
 	 }
-	 void createCone(float height, float radius, int numSegments, MeshData* meshData)
+	 void createCone(float height, float radius, int numSegments, int numStacks, float stackCurve, MeshData* meshData)
 	 {
+		 assert(numSegments > 2 && numStacks > 0);
 		 meshData->vertices.clear();
 		 meshData->indices.clear();
 		 float thetaStep = (2 * PI) / numSegments; //Horizontal angle 
-		 Vertex topVertex;
-		 topVertex.pos = Vec3(0, height / 2, 0);
-		 topVertex.uv = Vec2(0.5, 0.5);
-		 topVertex.normal = Vec3(0, 1, 0);
-		 meshData->vertices.push_back(topVertex);
 
 		 float phi = atan(height / radius);
 		 phi += PI / 2;
 
-		 for (size_t i = 0; i <= numSegments; i++)
+		 //i == 0 BOTTOM i == 1 TOP
+		 for (size_t i = 0; i <= numStacks; i++)
 		 {
-			 float theta = i * thetaStep;
-			 float costT = cos(theta);
-			 float sinT = sin(theta);
-			 Vertex vertex;
-			 vertex.pos = Vec3(costT * radius, -height/2, sinT * radius);
-			 vertex.normal = Vec3(costT * cos(phi), sin(phi), sinT * cos(phi));
-			 vertex.uv = Vec2(costT*0.5+0.5,sinT*0.5+0.5);
-			 meshData->vertices.push_back(vertex);
+			 float stackT = (float)i / numStacks;
+			 float stackTAdjusted = pow(stackT, stackCurve);
+			 for (size_t j = 0; j <= numSegments; j++)
+			 {
+				 float theta = j * thetaStep;
+				 float cosT = cos(theta);
+				 float sinT = sin(theta);
+
+				 Vertex vertex;
+				 float r = radius * (1 - stackTAdjusted);
+				 vertex.pos = Vec3(cosT * r, -height / 2 + height * stackTAdjusted, sinT * r);
+				 vertex.normal = Vec3(-cosT * cos(phi), sin(phi),-sinT * cos(phi));
+				 vertex.uv = Vec2((float)j/numSegments, stackTAdjusted);
+				 meshData->vertices.push_back(vertex);
+			 }
 		 }
-		 for (size_t i = 1; i <= numSegments; i++)
+
+		 //Side quads
+		 int columns = numSegments + 1;
+		 for (size_t i = 0; i < numStacks; i++)
 		 {
-			 meshData->indices.push_back(i);
-			 meshData->indices.push_back(0);//Top
-			 meshData->indices.push_back(i+1);
+			 for (size_t j = 0; j <= numSegments; j++)
+			 {
+				 int start = j + i * columns;
+				 meshData->indices.push_back(start);
+				 meshData->indices.push_back(start + columns);
+				 meshData->indices.push_back(start + 1);
+				 meshData->indices.push_back(start + 1);
+				 meshData->indices.push_back(start + columns);
+				 meshData->indices.push_back(start + columns + 1);
+			 }
 		 }
+		 
 	 }
 
 	 void createPlane(float size, int subdivisions, MeshData* mesh)

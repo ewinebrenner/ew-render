@@ -6,6 +6,7 @@ layout(location = 2) in vec2 vUV;
 out Surface{
 	vec2 UV;
 	vec3 Normal;
+	vec3 WorldPos;
 }vs_out;
 
 uniform mat4 _Model;
@@ -19,6 +20,7 @@ void main(){
 
 	vec4 worldPos = _Model * vec4(vPos,1.0);
 	vec3 p = worldPos.xyz;
+	vs_out.WorldPos = p;
 
 	#if CLIPPING_PLANE_ENABLED
 	vec3 planeNormal = normalize(_ClipPlaneNormal);
