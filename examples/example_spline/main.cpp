@@ -131,6 +131,7 @@ unsigned int selectionIndex = 0;
 ew::Framebuffer* mouseSelectFramebuffer;
 ImGuiTreeNodeFlags base_flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth;
 int selection_mask = (1 << 2);
+bool animate = false;
 
 struct MeshRenderer {
 	ew::Mat4 transform;
@@ -307,6 +308,12 @@ int main() {
 		{
 			transforms.push_back(ew::IdentityMatrix());
 		}
+		if (animate) {
+			for (size_t i = 0; i < 100; i++)
+			{
+				transforms[i] = ew::RotateZMatrix(i + time) * transforms[i];
+			}
+		}
 		skinnedLitShader.setMat4v("_FinalBoneMatrices", transforms.data(), transforms.size());
 
 		for (size_t i = 0; i < NUM_RENDERERS; i++)
@@ -400,7 +407,10 @@ int main() {
 					particleSystem.restart();
 				}
 			}
-			
+
+			if (ImGui::CollapsingHeader("Animation")) {
+				ImGui::Checkbox("Animate", &animate);
+			}
 			ImGui::End();
 
 			//IMGUIZMO
