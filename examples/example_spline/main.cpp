@@ -21,7 +21,7 @@
 #include <ew/modelLoading.h>
 
 #include <ew/external/imguizmo/ImGuizmo.h>
-
+#include <ew/model.h>
 struct AppTransformSettings {
 	ImGuizmo::OPERATION mCurrentGizmoOperation = ImGuizmo::TRANSLATE;
 	ImGuizmo::MODE mCurrentGizmoMode = ImGuizmo::WORLD;
@@ -73,39 +73,28 @@ ew::Vec3 controlPoints[4] = {
 int splineSegments = 32;
 float splineWidth = 0.3f;
 
-void drawMesh(const ew::Shader& shader, const ew::Mesh& mesh, const ew::Mat4& modelMatrix) {
-	mesh.bind();
+void drawMesh(const ew::Shader& shader, const ew::Model& model, const ew::Mat4& modelMatrix) {
 	shader.use();
 	shader.setMat4("_Model", modelMatrix);
-	glDrawElements(GL_TRIANGLES, mesh.getNumIndices(), GL_UNSIGNED_INT, NULL);
+	model.Draw();
 }
 
-void drawMesh(const ew::Shader& shader, const ew::Mesh& mesh, const ew::Transform& transform, int drawMode = GL_TRIANGLES) {
-	mesh.bind();
-	shader.setMat4("_Model", transform.getModelMatrix());
-	if (drawMode == GL_TRIANGLES) {
-		glDrawElements(drawMode, mesh.getNumIndices(), GL_UNSIGNED_INT, NULL);
-	}
-	else {
-		glDrawArrays(drawMode, 0, mesh.getNumVertices());
-	}
-}
-void createCubicBezierMesh(ew::Vec3 p0, ew::Vec3 p1, ew::Vec3 p2, ew::Vec3 p3, int numSegments, ew::MeshData* mesh) {
-	mesh->vertices.clear();
-	mesh->indices.clear();
+void createCubicBezierMesh(ew::Vec3 p0, ew::Vec3 p1, ew::Vec3 p2, ew::Vec3 p3, int numSegments, ew::MeshData* model) {
+	model->vertices.clear();
+	model->indices.clear();
 	for (size_t i = 0; i <= numSegments; i++)
 	{
 		float t = (float)i / numSegments;
 		ew::Vertex v;
 		v.pos = ew::evaluateCubicBezier(p0, p1, p2, p3, t);
 		v.normal = ew::Vec3(0, 0, 1);
-		mesh->vertices.push_back(v);
+		model->vertices.push_back(v);
 	}
 }
 
-void createCubicBezierTrackMesh(ew::Vec3 p0, ew::Vec3 p1, ew::Vec3 p2, ew::Vec3 p3, int numSegments, float splineWidth, ew::MeshData* mesh) {
-	mesh->vertices.clear();
-	mesh->indices.clear();
+void createCubicBezierTrackMesh(ew::Vec3 p0, ew::Vec3 p1, ew::Vec3 p2, ew::Vec3 p3, int numSegments, float splineWidth, ew::MeshData* model) {
+	model->vertices.clear();
+	model->indices.clear();
 	for (size_t i = 0; i <= numSegments; i++)
 	{
 		float t = (float)i / numSegments;
@@ -122,18 +111,18 @@ void createCubicBezierTrackMesh(ew::Vec3 p0, ew::Vec3 p1, ew::Vec3 p2, ew::Vec3 
 		v1.pos = centerPos - right * splineWidth;
 		v1.normal = normal;
 		v1.uv = ew::Vec2(1.0f, t);
-		mesh->vertices.push_back(v0);
-		mesh->vertices.push_back(v1);
+		model->vertices.push_back(v0);
+		model->vertices.push_back(v1);
 	}
 	for (size_t i = 0; i < numSegments; i++)
 	{
 		int startIndex = i * 2;
-		mesh->indices.push_back(startIndex);
-		mesh->indices.push_back(startIndex + 2);
-		mesh->indices.push_back(startIndex + 1);
-		mesh->indices.push_back(startIndex + 1);
-		mesh->indices.push_back(startIndex + 2);
-		mesh->indices.push_back(startIndex + 3);
+		model->indices.push_back(startIndex);
+		model->indices.push_back(startIndex + 2);
+		model->indices.push_back(startIndex + 1);
+		model->indices.push_back(startIndex + 1);
+		model->indices.push_back(startIndex + 2);
+		model->indices.push_back(startIndex + 3);
 	}
 }
 
@@ -145,7 +134,7 @@ int selection_mask = (1 << 2);
 
 struct MeshRenderer {
 	ew::Mat4 transform;
-	ew::Mesh* mesh;
+	ew::Model* model;
 	ew::Shader* shader;
 };
 
@@ -186,6 +175,8 @@ int main() {
 
 	//Load models
 	//ew::read_model("assets/WormDude.dae");
+	ew::Model wormModel = ew::Model("assets/WormDude.dae");
+
 
 	camera.m_position = ew::Vec3(0.0f, 0.0f, 10.0f);
 
@@ -204,10 +195,9 @@ int main() {
 	ew::createSphere(0.5f, 32, &sphereMeshData);
 	ew::createCube(1.0f, &cubeMeshData);
 
-	ew::Mesh splineMesh, sphereMesh, cubeMesh;
-	splineMesh.load(splineMeshData);
-	sphereMesh.load(sphereMeshData);
-	cubeMesh.load(cubeMeshData);
+	ew::Model splineModel = ew::Model(splineMeshData);
+	ew::Model cubeModel = ew::Model(cubeMeshData);
+	ew::Model sphereModel = ew::Model(sphereMeshData);
 	
 	ew::Shader unlitShader("assets/unlit.vert", "assets/unlit.frag");
 	ew::Shader litShader("assets/lit.vert", "assets/lit.frag");
@@ -223,23 +213,29 @@ int main() {
 	//Set up scene
 	MeshRenderer* splineMeshRenderer = &meshRenderers[0];
 	splineMeshRenderer->transform = ew::IdentityMatrix();
-	splineMeshRenderer->mesh = &splineMesh;
+	splineMeshRenderer->model = &splineModel;
 	splineMeshRenderer->shader = &litShader;
 
 	MeshRenderer* lightMeshRenderer = &meshRenderers[1];
 	lightMeshRenderer->transform = ew::TranslationMatrix(3.0f, 3.0f, 0.0f) * ew::ScaleMatrix(0.3f);
-	lightMeshRenderer->mesh = &sphereMesh;
+	lightMeshRenderer->model = &sphereModel;
 	lightMeshRenderer->shader = &unlitShader;
 
-	for (size_t i = 2; i < NUM_RENDERERS; i++)
+	MeshRenderer* wormMeshRenderer = &meshRenderers[2];
+	wormMeshRenderer->transform = ew::TranslationMatrix(0.0f, 0.0f, 5.0f);
+	wormMeshRenderer->model = &wormModel;
+	wormMeshRenderer->shader = &litShader;
+
+	for (size_t i = 3; i < NUM_RENDERERS; i++)
 	{
 		meshRenderers[i].transform = ew::IdentityMatrix();
-		meshRenderers[i].mesh = &cubeMesh;
+		meshRenderers[i].model = &cubeModel;
 		meshRenderers[i].shader = &litShader;
 	}
 
 	ew::ParticleSystem particleSystem(MAX_PARTICLES);
-	
+	particleSystem.m_enabled = false;
+
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
 		processInput(window);
@@ -299,13 +295,12 @@ int main() {
 
 		for (size_t i = 0; i < NUM_RENDERERS; i++)
 		{
-			drawMesh(*meshRenderers[i].shader, *meshRenderers[i].mesh, meshRenderers[i].transform);
+			drawMesh(*meshRenderers[i].shader, *meshRenderers[i].model, meshRenderers[i].transform);
 		}
 
 		if (particleSystem.m_enabled) {
 			particleSystem.draw(deltaTime, &particleShader, view, projection, camera.m_position);
 		}
-
 		//Draw grid
 		if (appTransformSettings.drawGrid) {
 			gridShader.use();
@@ -328,7 +323,7 @@ int main() {
 			{
 				pickingShader.setInt("_ObjectIndex", i + 1);
 				pickingShader.setMat4("_MVP", viewProjection * meshRenderers[i].transform);
-				drawMesh(pickingShader, *meshRenderers[i].mesh, meshRenderers[i].transform);
+				drawMesh(pickingShader, *meshRenderers[i].model, meshRenderers[i].transform);
 			}
 			pickingFramebuffer.unbind();
 			glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
@@ -365,21 +360,22 @@ int main() {
 				ImGui::Checkbox("Orthographic", &camera.m_orthographic);
 				ImGui::DragFloat("Move speed", &cameraController.moveSpeed, 0.1f);
 			}
-			if (ImGui::CollapsingHeader("Spline")) {
-				bool dirty = false;
-				dirty = dirty || (ImGui::DragInt("Segments", &splineSegments, 1, 3, 512));
-				for (size_t i = 0; i < 4; i++)
-				{
-					ImGui::PushID(i);
-					dirty = dirty || ImGui::DragFloat3(("P" + std::to_string(i)).c_str(), &controlPoints[i].x, 0.2f);
-					ImGui::PopID();
-				}
-				dirty = dirty || (ImGui::DragFloat("Width", &splineWidth, 0.1f, 0.0f, 5.0f));
-				if (dirty) {
-					createCubicBezierTrackMesh(controlPoints[0], controlPoints[1], controlPoints[2], controlPoints[3], splineSegments, splineWidth,&splineMeshData);
-					splineMesh.load(splineMeshData);
-				}
-			}
+			//if (ImGui::CollapsingHeader("Spline")) {
+			//	bool dirty = false;
+			//	dirty = dirty || (ImGui::DragInt("Segments", &splineSegments, 1, 3, 512));
+			//	for (size_t i = 0; i < 4; i++)
+			//	{
+			//		ImGui::PushID(i);
+			//		dirty = dirty || ImGui::DragFloat3(("P" + std::to_string(i)).c_str(), &controlPoints[i].x, 0.2f);
+			//		ImGui::PopID();
+			//	}
+			//	dirty = dirty || (ImGui::DragFloat("Width", &splineWidth, 0.1f, 0.0f, 5.0f));
+			//	if (dirty) {
+			//		createCubicBezierTrackMesh(controlPoints[0], controlPoints[1], controlPoints[2], controlPoints[3], splineSegments, splineWidth,&splineMeshData);
+			//		//splineMesh.load(splineMeshData);
+			//		
+			//	}
+			//}
 			if (ImGui::CollapsingHeader("Particles")) {
 				ImGui::Text("Num Particles: %d", particleSystem.getNumParticles());
 				ImGui::Checkbox("Enabled", &particleSystem.m_enabled);

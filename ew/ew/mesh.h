@@ -23,6 +23,7 @@ namespace ew {
 		void bind()const;
 		inline int getNumVertices()const { return m_numVertices; }
 		inline int getNumIndices()const { return m_numIndices; }
+		void Draw()const;
 	private:
 		bool m_initialized = false;
 		unsigned int m_vao = 0;

@@ -62,4 +62,9 @@ namespace ew {
 	{
 		glBindVertexArray(m_vao);
 	}
+	void Mesh::Draw()const
+	{
+		bind();
+		glDrawElements(GL_TRIANGLES, m_numIndices, GL_UNSIGNED_INT, NULL);
+	}
 }

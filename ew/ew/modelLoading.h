@@ -2,6 +2,7 @@
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
+#include "mesh.h"
 
 namespace ew {
 #define ASSIMP_LOAD_FLAGS (aiProcess_Triangulate | aiProcess_GenNormals | aiProcess_JoinIdenticalVertices)
@@ -12,7 +13,7 @@ namespace ew {
 			if (i == 0)
 				printf("\n");
 			const aiVertexWeight& vw = pBone->mWeights[i];
-			printf("        %d: vertex id %d weight %.2f\n", i, vw.mVertexId, vw.mWeight);
+			printf("        %d: vertex id %d weight %.2f\n", i, (int)vw.mVertexId, vw.mWeight);
 		}
 		printf("\n");
 	}
