@@ -16,12 +16,15 @@ namespace ew {
 		Model(const MeshData& meshData);
 		Model(const std::string& filePath);
 		void Draw()const;
+		std::map<std::string, BoneInfo>& GetBoneInfoMap() { return m_boneInfoMap; };
+		int GetBoneCount() { return m_boneCounter; }
+
 	private:
 		std::vector<ew::Mesh> m_meshes;
 		void processNode(aiNode* node, const aiScene* scene);
 		ew::Mesh processMesh(aiMesh* mesh, const aiScene* scene);
 		void ExtractBoneWeights(std::vector<Vertex>& vertices, aiMesh* aiMesh, const aiScene* scene);
-
+		
 		//Skeletal mesh
 		std::map<std::string, BoneInfo> m_boneInfoMap;
 		int m_boneCounter = 0;

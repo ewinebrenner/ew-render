@@ -175,6 +175,7 @@ int main() {
 
 	ew::Shader unlitShader("assets/unlit.vert", "assets/unlit.frag");
 	ew::Shader litShader("assets/lit.vert", "assets/lit.frag");
+	ew::Shader skinnedLitShader("assets/engine/shaders/skinnedMesh.vert", "assets/lit.frag");
 	ew::Shader pickingShader("assets/engine/shaders/objectPicking.vert", "assets/engine/shaders/objectPicking.frag");
 	ew::Shader particleShader("assets/particle.vert", "assets/particle.frag");
 	ew::Shader gridShader("assets/engine/shaders/grid.vert", "assets/engine/shaders/grid.frag");
@@ -192,6 +193,10 @@ int main() {
 	ew::Model sphereModel = ew::Model(sphereMeshData);
 
 	ew::Model wormModel = ew::Model("assets/Dancing.dae");
+
+	//Set bone matrices
+	//auto transforms = wormModel.GetDefaultBoneMatrices();
+
 
 	camera.m_position = ew::Vec3(0.0f, 0.0f, 10.0f);
 
@@ -223,7 +228,8 @@ int main() {
 	MeshRenderer* wormMeshRenderer = &meshRenderers[2];
 	wormMeshRenderer->transform = ew::TranslationMatrix(0.0f, 0.0f, 5.0f) * ew::ScaleMatrix(0.01f);
 	wormMeshRenderer->model = &wormModel;
-	wormMeshRenderer->shader = &litShader;
+	wormMeshRenderer->shader = &skinnedLitShader;
+
 
 	for (size_t i = 3; i < NUM_RENDERERS; i++)
 	{
@@ -291,6 +297,17 @@ int main() {
 		unlitShader.use();
 		unlitShader.setMat4("_ViewProjection", viewProjection);
 		unlitShader.setVec4("_Color", light.color);
+
+		//Skeletal animation shiz
+		skinnedLitShader.use();
+		skinnedLitShader.setMat4("_ViewProjection", viewProjection);
+
+		std::vector<ew::Mat4> transforms;
+		for (size_t i = 0; i < 100; i++)
+		{
+			transforms.push_back(ew::IdentityMatrix());
+		}
+		skinnedLitShader.setMat4v("_FinalBoneMatrices", transforms.data(), transforms.size());
 
 		for (size_t i = 0; i < NUM_RENDERERS; i++)
 		{
