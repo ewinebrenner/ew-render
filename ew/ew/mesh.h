@@ -11,7 +11,25 @@ namespace ew {
 		int boneIds[MAX_BONE_INFLUENCE];
 		float boneWeights[MAX_BONE_INFLUENCE];
 	};
-
+	inline void ResetBoneWeights(Vertex& vertex) {
+		for (int i = 0; i < MAX_BONE_INFLUENCE; i++)
+		{
+			vertex.boneIds[i] = -1;
+			vertex.boneWeights[i] = 0.0f;
+		}
+	}
+	inline void SetVertexBoneData(Vertex& vertex, int boneID, float weight)
+	{
+		for (int i = 0; i < MAX_BONE_INFLUENCE; ++i)
+		{
+			if (vertex.boneIds[i] < 0)
+			{
+				vertex.boneWeights[i] = weight;
+				vertex.boneIds[i] = boneID;
+				break;
+			}
+		}
+	}
 	struct MeshData {
 		std::vector<Vertex> vertices;
 		std::vector<unsigned int> indices;

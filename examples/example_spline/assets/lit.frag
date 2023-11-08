@@ -34,7 +34,7 @@ void main(){
 	float specular = pow(max(dot(halfVector,normal),0.0),_Material.shininess) * _Material.specularK;
 	vec3 lightColor = (ambient + diffuse + specular) * _Light.color.rgb;
 	//vec3 color = texture(_Texture,fs_in.UV).rgb * lightColor;
-	vec3 color = lightColor;
-	FragColor = vec4(mix(abs(fs_in.WorldNormal),color,0.8),1.0);
+	vec3 albedo = normal*0.5+0.5;
+	FragColor = vec4(albedo,1.0);// vec4(mix(abs(normal),color,0.8),1.0);
 	//FragColor = vec4(abs(fs_in.WorldNormal),1.0);
 }

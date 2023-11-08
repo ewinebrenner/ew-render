@@ -173,10 +173,25 @@ int main() {
 	ImGui_ImplOpenGL3_Init();
 
 
-	//Load models
-	//ew::read_model("assets/WormDude.dae");
-	ew::Model wormModel = ew::Model("assets/WormDude.dae");
+	ew::Shader unlitShader("assets/unlit.vert", "assets/unlit.frag");
+	ew::Shader litShader("assets/lit.vert", "assets/lit.frag");
+	ew::Shader pickingShader("assets/engine/shaders/objectPicking.vert", "assets/engine/shaders/objectPicking.frag");
+	ew::Shader particleShader("assets/particle.vert", "assets/particle.frag");
+	ew::Shader gridShader("assets/engine/shaders/grid.vert", "assets/engine/shaders/grid.frag");
 
+	unsigned int texture = ew::loadTexture("assets/bricks_color.jpg", GL_REPEAT, GL_LINEAR_MIPMAP_LINEAR);
+
+	//Create meshes
+	ew::MeshData splineMeshData, sphereMeshData, cubeMeshData;
+	createCubicBezierTrackMesh(controlPoints[0], controlPoints[1], controlPoints[2], controlPoints[3], 32, splineWidth, &splineMeshData);
+	ew::createSphere(0.5f, 32, &sphereMeshData);
+	ew::createCube(1.0f, &cubeMeshData);
+
+	ew::Model splineModel = ew::Model(splineMeshData);
+	ew::Model cubeModel = ew::Model(cubeMeshData);
+	ew::Model sphereModel = ew::Model(sphereMeshData);
+
+	ew::Model wormModel = ew::Model("assets/Dancing.dae");
 
 	camera.m_position = ew::Vec3(0.0f, 0.0f, 10.0f);
 
@@ -189,23 +204,7 @@ int main() {
 
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-	//Create meshes
-	ew::MeshData splineMeshData, sphereMeshData, cubeMeshData;
-	createCubicBezierTrackMesh(controlPoints[0], controlPoints[1], controlPoints[2], controlPoints[3], 32,splineWidth, &splineMeshData);
-	ew::createSphere(0.5f, 32, &sphereMeshData);
-	ew::createCube(1.0f, &cubeMeshData);
-
-	ew::Model splineModel = ew::Model(splineMeshData);
-	ew::Model cubeModel = ew::Model(cubeMeshData);
-	ew::Model sphereModel = ew::Model(sphereMeshData);
 	
-	ew::Shader unlitShader("assets/unlit.vert", "assets/unlit.frag");
-	ew::Shader litShader("assets/lit.vert", "assets/lit.frag");
-	ew::Shader pickingShader("assets/engine/shaders/objectPicking.vert", "assets/engine/shaders/objectPicking.frag");
-	ew::Shader particleShader("assets/particle.vert", "assets/particle.frag");
-	ew::Shader gridShader("assets/engine/shaders/grid.vert", "assets/engine/shaders/grid.frag");
-
-	unsigned int texture = ew::loadTexture("assets/bricks_color.jpg", GL_REPEAT, GL_LINEAR_MIPMAP_LINEAR);
 
 	ew::Framebuffer pickingFramebuffer(SCREEN_WIDTH,SCREEN_HEIGHT, ew::TextureInternalFormat::RGB32UI, ew::TextureFormat::RGB_INTEGER, ew::TextureType::UINT);
 	mouseSelectFramebuffer = &pickingFramebuffer;
@@ -222,7 +221,7 @@ int main() {
 	lightMeshRenderer->shader = &unlitShader;
 
 	MeshRenderer* wormMeshRenderer = &meshRenderers[2];
-	wormMeshRenderer->transform = ew::TranslationMatrix(0.0f, 0.0f, 5.0f);
+	wormMeshRenderer->transform = ew::TranslationMatrix(0.0f, 0.0f, 5.0f) * ew::ScaleMatrix(0.01f);
 	wormMeshRenderer->model = &wormModel;
 	wormMeshRenderer->shader = &litShader;
 

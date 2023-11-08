@@ -2,7 +2,7 @@
 #include <assimp/scene.h>
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
-
+#include <assert.h>
 namespace ew {
     Model::Model(const MeshData& meshData)
     {
@@ -47,12 +47,53 @@ namespace ew {
     ew::Vec2 aiVec2(const aiVector3D& v) {
         return ew::Vec2(v.x, v.y);
     }
+    ew::Mat4 aiMat4(const aiMatrix4x4& m) {
+        return ew::Mat4(
+            m.a1, m.a2, m.a3, m.a4,
+            m.b1, m.b2, m.b3, m.b4,
+            m.c1, m.c2, m.c3, m.c4,
+            m.d1, m.d2, m.d3, m.d4
+        );
+    }
+
+    void Model::ExtractBoneWeights(std::vector<Vertex>& vertices, aiMesh* aiMesh, const aiScene* scene) {
+        for (size_t boneIndex = 0; boneIndex < aiMesh->mNumBones; ++boneIndex)
+        {
+            int boneID = -1;
+            std::string boneName = aiMesh->mBones[boneIndex]->mName.C_Str();
+            //Found a new bone name
+            if (m_boneInfoMap.find(boneName) == m_boneInfoMap.end()) {
+                BoneInfo newBoneInfo;
+                newBoneInfo.id = m_boneCounter;
+                newBoneInfo.offset = aiMat4(aiMesh->mBones[boneIndex]->mOffsetMatrix);
+                m_boneInfoMap[boneName] = newBoneInfo;
+                boneID = m_boneCounter;
+                m_boneCounter++;
+            }
+            else {
+                boneID = m_boneInfoMap[boneName].id;
+            }
+            assert(boneID != -1);
+
+            //Assign weights for found bone
+            aiVertexWeight* weights = aiMesh->mBones[boneIndex]->mWeights;
+            int numWeights = aiMesh->mBones[boneIndex]->mNumWeights;
+            for (size_t weightIndex = 0; weightIndex < numWeights; ++weightIndex)
+            {
+                int vertexId = weights[weightIndex].mVertexId;
+                float weight = weights[weightIndex].mWeight;
+                assert(vertexId <= vertices.size());
+                SetVertexBoneData(vertices[vertexId], boneID, weight);
+            }
+        }
+    }
     ew::Mesh Model::processMesh(aiMesh* aiMesh, const aiScene* scene)
     {
         ew::MeshData meshData;
         for (size_t i = 0; i < aiMesh->mNumVertices; i++)
         {
             ew::Vertex vertex;
+            ResetBoneWeights(vertex);
             vertex.pos = aiVec3(aiMesh->mVertices[i]);
             if (aiMesh->HasNormals()) {
                 vertex.normal = aiVec3(aiMesh->mNormals[i]);
@@ -73,6 +114,7 @@ namespace ew {
                 meshData.indices.push_back(face.mIndices[j]);
             }
         }
+        ExtractBoneWeights(meshData.vertices, aiMesh, scene);
         ew::Mesh mesh;
         mesh.load(meshData);
         return mesh;
