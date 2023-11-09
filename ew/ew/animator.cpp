@@ -2,30 +2,41 @@
 
 namespace ew {
 	Animator::Animator(Animation* animation)
-		:m_currentTime(0), m_currentAnimation(animation)
+		:m_currentTime(0), m_currentAnimation(animation), m_paused(false)
 	{
 		m_finalBoneMatrices.reserve(100);
 		for (size_t i = 0; i < 100; i++)
 		{
 			m_finalBoneMatrices.push_back(ew::IdentityMatrix());
 		}
+		UpdateBoneTransforms();
 	}
 
 	void Animator::Update(float deltaTime)
 	{
 		m_deltaTime = deltaTime;
-		if (m_currentAnimation == nullptr)
+		if (m_currentAnimation == nullptr || m_paused)
 			return;
 		m_currentTime += m_currentAnimation->GetTicksPerSecond() * deltaTime;
 		//Loop time
 		m_currentTime = fmod(m_currentTime, m_currentAnimation->GetDuration());
-		CalculateBoneTransform(&m_currentAnimation->GetRootNode(), ew::IdentityMatrix());
+		UpdateBoneTransforms();
 	}
 
 	void Animator::Play(Animation* animation)
 	{
 		m_currentAnimation = animation;
 		m_currentTime = 0.0f;
+	}
+	void Animator::SetTime(float time) {
+		if (time == m_currentTime)
+			return;
+		m_currentTime = time;
+		UpdateBoneTransforms();
+	}
+	void Animator::UpdateBoneTransforms()
+	{
+		CalculateBoneTransform(&m_currentAnimation->GetRootNode(), ew::IdentityMatrix());
 	}
 
 	void Animator::CalculateBoneTransform(const AssimpNodeData* node, const Mat4& parentTransform)

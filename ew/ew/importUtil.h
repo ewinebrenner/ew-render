@@ -2,6 +2,7 @@
 #include "ewMath/ewMath.h"
 #include <assimp/Importer.hpp>
 #include <assimp/quaternion.h>
+#include "ewMath/quaternion.h"
 
 namespace ew {
     inline ew::Vec3 aiVec3(const aiVector3D& v) {

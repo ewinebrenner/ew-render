@@ -133,7 +133,11 @@ unsigned int selectionIndex = 0;
 ew::Framebuffer* mouseSelectFramebuffer;
 ImGuiTreeNodeFlags base_flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth;
 int selection_mask = (1 << 2);
-bool animate = false;
+
+struct AnimatorSettings {
+	bool playing = true;
+	float time = 0; //Manual time set
+}animSettings;
 
 struct MeshRenderer {
 	ew::Mat4 transform;
@@ -232,7 +236,7 @@ int main() {
 	lightMeshRenderer->shader = &unlitShader;
 
 	MeshRenderer* wormMeshRenderer = &meshRenderers[2];
-	wormMeshRenderer->transform = ew::TranslationMatrix(0.0f, 0.0f, 5.0f) * ew::ScaleMatrix(0.01f);
+	wormMeshRenderer->transform = ew::TranslationMatrix(0.0f, 0.0f, 5.0f);// *ew::ScaleMatrix(0.01f);
 	wormMeshRenderer->model = &wormModel;
 	wormMeshRenderer->shader = &skinnedLitShader;
 
@@ -263,7 +267,13 @@ int main() {
 		fpsCounter.update(deltaTime);
 		camera.m_aspectRatio = (float)SCREEN_WIDTH / SCREEN_HEIGHT;
 
-		animator.Update(deltaTime);
+		if (animSettings.playing) {
+			animator.Update(deltaTime);
+			animSettings.time = animator.GetTime();
+		}
+		else {
+			animator.SetTime(animSettings.time);
+		}
 
 		//Update camera forward vector
 		float yawRad = ew::Radians(cameraController.yaw);
@@ -416,7 +426,12 @@ int main() {
 			}
 
 			if (ImGui::CollapsingHeader("Animation")) {
-				ImGui::Checkbox("Animate", &animate);
+				if (ImGui::Checkbox("Playing", &animSettings.playing)) {
+					animator.SetPaused(!animSettings.playing);
+				}
+				if (ImGui::SliderFloat("Time", &animSettings.time, 0, animation.GetDuration())) {
+					animator.SetTime(animSettings.time);
+				}
 			}
 			ImGui::End();
 

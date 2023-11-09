@@ -1,6 +1,9 @@
 #pragma once
 #include "vec3.h"
 #include "mat4.h"
+#include <glm/glm.hpp>
+#include <glm/gtx/quaternion.hpp>
+#include "ewMath.h"
 
 namespace ew {
 	struct Quaternion {
@@ -12,12 +15,45 @@ namespace ew {
 		const Vec3& GetVectorPart(void)const {
 			return (reinterpret_cast<const Vec3&>(x));
 		}
-
+		//Quaternion-float operators
+		Quaternion& operator*=(float rhs);
+		Quaternion& operator/=(float rhs);
+		friend Quaternion operator*(Quaternion lhs, float rhs);
+		friend Quaternion operator*(float lhs, Quaternion rhs);
+		friend Quaternion operator/(Quaternion lhs, float rhs);
+		//Quaternion-Quaternion operators
 		friend Quaternion operator+(const Quaternion& lhs, const Quaternion& rhs);
 		friend Quaternion operator*(const Quaternion& lhs, const Quaternion& rhs);
 
 	};
-
+	inline Quaternion& Quaternion::operator*=(float rhs)
+	{
+		this->x *= rhs;
+		this->y *= rhs;
+		this->z *= rhs;
+		this->w *= rhs;
+		return *this;
+	}
+	inline Quaternion operator*(Quaternion lhs, float rhs)
+	{
+		lhs *= rhs;
+		return lhs;
+	}
+	inline Quaternion operator*(float lhs, Quaternion rhs)
+	{
+		rhs *= lhs;
+		return rhs;
+	}
+	inline Quaternion& Quaternion::operator/=(float rhs)
+	{
+		*this *= (1.0f / rhs);
+		return *this;
+	}
+	inline Quaternion operator/(Quaternion lhs, float rhs)
+	{
+		lhs /= rhs;
+		return lhs;
+	}
 	inline Quaternion operator+(const Quaternion& lhs, const Quaternion& rhs) {
 		//TODO
 		return Quaternion(
@@ -38,34 +74,32 @@ namespace ew {
 	}
 
 	//HELPER FUNCTIONS
-	//FROM: https://www.euclideanspace.com/maths/algebra/realNormedAlgebra/quaternions/slerp/index.htm
+	
+	//Based on GLM Slerp implementation
 	inline Quaternion Slerp(const Quaternion& qa, const Quaternion& qb, float t) {
-		float cosHalfTheta = qa.x * qb.x + qa.y * qb.y + qa.z * qb.z + qa.w * qb.w;
-		//Theta = 0, so return qa
-		if (fabsf(cosHalfTheta) >= 1.0f) {
-			return qa;
+		Quaternion z = qb;
+
+		float cosTheta = qa.x * qb.x + qa.y * qb.y + qa.z * qb.z + qa.w * qb.w;
+		//If cosTheta < 0, interpolation will take long way around.
+		//Negate one quaternion to take short way.
+		if (cosTheta < 0) {
+			z = Quaternion(-qb.x, -qb.y, -qb.z, -qb.w);
+			cosTheta = -cosTheta;
 		}
-		float halfTheta = acosf(cosHalfTheta);
-		float sinHalfTheta = sqrtf(1.0 - cosHalfTheta * cosHalfTheta);
-		//If theta = 180 degrees, result is not fully defined.
-		if (fabs(sinHalfTheta) < 0.001f) {
+		//If cosTheta is close to 1, use linear interpolation. Avoids sin(0) becoming 0 denominator
+		if (cosTheta > 1.0 - FLT_EPSILON) {
 			return Quaternion(
-				qa.x * 0.5f + qb.x * 0.5f,
-				qa.y * 0.5f + qb.y * 0.5f,
-				qa.z * 0.5f + qa.z * 0.5f,
-				qa.w * 0.5f + qb.w * 0.5f
+				ew::Lerp(qa.x, z.x, t),
+				ew::Lerp(qa.y, z.y, t),
+				ew::Lerp(qa.z, z.z, t),
+				ew::Lerp(qa.w, z.w, t)
 			);
 		}
-		//0-1 amount of quaterion A
-		float ratioA = sinf((1 - t) * halfTheta) / sinHalfTheta;
-		//0-1 amount of quaternion B
-		float ratioB = sinf(t * halfTheta) / sinHalfTheta;
-		return Quaternion(
-			qa.x * ratioA + qb.x * ratioB,
-			qa.y * ratioA + qb.y * ratioB,
-			qa.z * ratioA + qb.z * ratioB,
-			qa.w * ratioA + qb.w * ratioB
-		);
+		else {
+			// Essential Mathematics, page 467
+			float angle = acosf(cosTheta);
+			return (sinf((1 - t) * angle) * qa + sin(t * angle) * z) / sinf(angle);
+		}
 	}
 
 	/// <summary>
