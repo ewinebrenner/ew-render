@@ -17,7 +17,7 @@ namespace ew {
 		Model(const std::string& filePath);
 		void Draw()const;
 		std::map<std::string, BoneInfo>& GetBoneInfoMap() { return m_boneInfoMap; };
-		int GetBoneCount() { return m_boneCounter; }
+		int& GetBoneCount() { return m_boneCounter; }
 
 	private:
 		std::vector<ew::Mesh> m_meshes;
