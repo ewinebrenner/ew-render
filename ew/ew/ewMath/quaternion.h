@@ -1,8 +1,6 @@
 #pragma once
 #include "vec3.h"
 #include "mat4.h"
-#include <glm/glm.hpp>
-#include <glm/gtx/quaternion.hpp>
 #include "ewMath.h"
 
 namespace ew {

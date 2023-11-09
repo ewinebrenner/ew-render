@@ -187,7 +187,8 @@ int main() {
 	ew::Shader particleShader("assets/particle.vert", "assets/particle.frag");
 	ew::Shader gridShader("assets/engine/shaders/grid.vert", "assets/engine/shaders/grid.frag");
 
-	unsigned int texture = ew::loadTexture("assets/bricks_color.jpg", GL_REPEAT, GL_LINEAR_MIPMAP_LINEAR);
+
+	//unsigned int brickTexture = ew::loadTexture("assets/bricks_color.jpg", GL_REPEAT, GL_LINEAR_MIPMAP_LINEAR);
 
 	//Create meshes
 	ew::MeshData splineMeshData, sphereMeshData, cubeMeshData;
@@ -199,14 +200,12 @@ int main() {
 	ew::Model cubeModel = ew::Model(cubeMeshData);
 	ew::Model sphereModel = ew::Model(sphereMeshData);
 
-	ew::Model wormModel = ew::Model("assets/Dancing.dae");
-
-	ew::Animation animation = ew::Animation("assets/Dancing.dae",&wormModel);
+	ew::Model animatedModel = ew::Model("assets/BossMan/Jump.dae");
+	ew::Animation animation = ew::Animation("assets/BossMan/Jump.dae",&animatedModel);
 	ew::Animator animator = ew::Animator(&animation);
 
-	//Set bone matrices
-	//auto transforms = wormModel.GetDefaultBoneMatrices();
-
+	//Load textures
+	unsigned int bossTexture = ew::loadTexture("assets/BossMan/textures/Boss_diffuse.png", GL_REPEAT, GL_LINEAR_MIPMAP_LINEAR, GL_NEAREST);
 
 	camera.m_position = ew::Vec3(0.0f, 0.0f, 10.0f);
 
@@ -219,7 +218,6 @@ int main() {
 
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-	
 
 	ew::Framebuffer pickingFramebuffer(SCREEN_WIDTH,SCREEN_HEIGHT, ew::TextureInternalFormat::RGB32UI, ew::TextureFormat::RGB_INTEGER, ew::TextureType::UINT);
 	mouseSelectFramebuffer = &pickingFramebuffer;
@@ -237,7 +235,7 @@ int main() {
 
 	MeshRenderer* wormMeshRenderer = &meshRenderers[2];
 	wormMeshRenderer->transform = ew::TranslationMatrix(0.0f, 0.0f, 5.0f);// *ew::ScaleMatrix(0.01f);
-	wormMeshRenderer->model = &wormModel;
+	wormMeshRenderer->model = &animatedModel;
 	wormMeshRenderer->shader = &skinnedLitShader;
 
 
@@ -298,8 +296,7 @@ int main() {
 		litShader.use();
 		litShader.setMat4("_ViewProjection", viewProjection);
 
-		glActiveTexture(0);
-		glBindTexture(GL_TEXTURE_2D, texture);
+		
 		litShader.setInt("_Texture", 0);
 
 		litShader.setVec3("_EyePos", camera.m_position);
@@ -319,6 +316,17 @@ int main() {
 		//Skeletal animation shiz
 		skinnedLitShader.use();
 		skinnedLitShader.setMat4("_ViewProjection", viewProjection);
+		skinnedLitShader.setVec3("_EyePos", camera.m_position);
+		skinnedLitShader.setVec3("_Light.position", lightMeshRenderer->transform[3].toVec3());
+		skinnedLitShader.setVec4("_Light.color", light.color);
+		skinnedLitShader.setVec4("_Material.color", material.color);
+		skinnedLitShader.setFloat("_Material.ambientK", material.ambientK);
+		skinnedLitShader.setFloat("_Material.diffuseK", material.diffuseK);
+		skinnedLitShader.setFloat("_Material.specularK", material.specularK);
+		skinnedLitShader.setFloat("_Material.shininess", material.shininess);
+		glActiveTexture(0);
+		glBindTexture(GL_TEXTURE_2D, bossTexture);
+		skinnedLitShader.setInt("_Texture", 0);
 
 		std::vector<ew::Mat4> transforms = animator.GetFinalBoneMatrices();
 		/*for (size_t i = 0; i < 100; i++)
