@@ -59,7 +59,8 @@ namespace ew {
 	struct Animation {
 	public:
 		Animation() = default;
-		Animation(const char* filePath);
+		Animation(const char* filePath, Model* model);
+		Bone* FindBone(const std::string& name);
 		inline float GetTicksPerSecond() { return m_ticksPerSecond; }
 		inline float GetDuration() { return m_duration; }
 		inline const AssimpNodeData& GetRootNode() { return m_rootNode; }

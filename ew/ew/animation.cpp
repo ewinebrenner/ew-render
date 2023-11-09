@@ -111,7 +111,7 @@ namespace ew {
 	}
 
 	//ANIMATION
-	Animation::Animation(const char* filePath)
+	Animation::Animation(const char* filePath, Model* model)
 	{
 		Assimp::Importer importer;
 		const aiScene* scene = importer.ReadFile(filePath, aiProcess_Triangulate);
@@ -120,6 +120,16 @@ namespace ew {
 		m_duration = animation->mDuration;
 		m_ticksPerSecond = animation->mTicksPerSecond;
 		ReadHierarchyData(m_rootNode, scene->mRootNode);
+		ReadBones(animation, *model);
+	}
+	Bone* Animation::FindBone(const std::string& name)
+	{
+		auto iter = std::find_if(m_bones.begin(), m_bones.end(), [&](const Bone& bone) {
+			return bone.GetBoneName() == name;
+		});
+		if (iter == m_bones.end()) 
+			return nullptr;
+		return &(*iter);
 	}
 	void Animation::ReadHierarchyData(AssimpNodeData& dest, const aiNode* src)
 	{

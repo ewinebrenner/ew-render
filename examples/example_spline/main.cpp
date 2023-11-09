@@ -22,6 +22,8 @@
 
 #include <ew/external/imguizmo/ImGuizmo.h>
 #include <ew/model.h>
+#include <ew/animator.h>
+
 struct AppTransformSettings {
 	ImGuizmo::OPERATION mCurrentGizmoOperation = ImGuizmo::TRANSLATE;
 	ImGuizmo::MODE mCurrentGizmoMode = ImGuizmo::WORLD;
@@ -195,6 +197,9 @@ int main() {
 
 	ew::Model wormModel = ew::Model("assets/Dancing.dae");
 
+	ew::Animation animation = ew::Animation("assets/Dancing.dae",&wormModel);
+	ew::Animator animator = ew::Animator(&animation);
+
 	//Set bone matrices
 	//auto transforms = wormModel.GetDefaultBoneMatrices();
 
@@ -258,6 +263,8 @@ int main() {
 		fpsCounter.update(deltaTime);
 		camera.m_aspectRatio = (float)SCREEN_WIDTH / SCREEN_HEIGHT;
 
+		animator.Update(deltaTime);
+
 		//Update camera forward vector
 		float yawRad = ew::Radians(cameraController.yaw);
 		float pitchRad = ew::Radians(cameraController.pitch);
@@ -303,8 +310,8 @@ int main() {
 		skinnedLitShader.use();
 		skinnedLitShader.setMat4("_ViewProjection", viewProjection);
 
-		std::vector<ew::Mat4> transforms;
-		for (size_t i = 0; i < 100; i++)
+		std::vector<ew::Mat4> transforms = animator.GetFinalBoneMatrices();
+		/*for (size_t i = 0; i < 100; i++)
 		{
 			transforms.push_back(ew::IdentityMatrix());
 		}
@@ -313,7 +320,7 @@ int main() {
 			{
 				transforms[i] = ew::RotateZMatrix(i + time) * transforms[i];
 			}
-		}
+		}*/
 		skinnedLitShader.setMat4v("_FinalBoneMatrices", transforms.data(), transforms.size());
 
 		for (size_t i = 0; i < NUM_RENDERERS; i++)
