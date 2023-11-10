@@ -49,14 +49,14 @@ namespace ew {
 		glBindFramebuffer(GL_FRAMEBUFFER, m_id);
 
 		//1 color attachment
-		glGenTextures(1, &m_colorTexture);
-		glBindTexture(GL_TEXTURE_2D, m_colorTexture);
+		glGenTextures(1, &m_colorTexture[m_colorTextureCount]);
+		glBindTexture(GL_TEXTURE_2D, m_colorTexture[m_colorTextureCount]);
 		glTexImage2D(GL_TEXTURE_2D, 0, getGLInternalFormat(internalFormat), width, height, 0, getGLFormat(format), getGLType(type), NULL);
 		//TODO: Add support for changing filtering
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_colorTexture, 0);
-
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_colorTexture[m_colorTextureCount], 0);
+		m_colorTextureCount = 1;
 		//Depth buffer
 		glGenTextures(1, &m_depthTexture);
 		glBindTexture(GL_TEXTURE_2D, m_depthTexture);
@@ -75,6 +75,12 @@ namespace ew {
 	void Framebuffer::bind()
 	{
 		glBindFramebuffer(GL_FRAMEBUFFER, m_id);
+		unsigned int attachments[MAX_COLOR_ATTACHMENTS];
+		for (size_t i = 0; i < MAX_COLOR_ATTACHMENTS; i++)
+		{
+			attachments[i] = GL_COLOR_ATTACHMENT0 + i;
+		}
+		glDrawBuffers(m_colorTextureCount, attachments);
 	}
 	void Framebuffer::unbind()
 	{
@@ -93,10 +99,26 @@ namespace ew {
 	void Framebuffer::resize(unsigned int width, unsigned int height) {
 		m_width = width;
 		m_height = height;
-		glBindTexture(GL_TEXTURE_2D, m_colorTexture);
-		glTexImage2D(GL_TEXTURE_2D, 0, getGLInternalFormat(m_internalFormat), m_width, m_height, 0, getGLFormat(m_format), getGLType(m_type), NULL);
+		for (size_t i = 0; i < m_colorTextureCount; i++)
+		{
+			glBindTexture(GL_TEXTURE_2D, m_colorTexture[i]);
+			glTexImage2D(GL_TEXTURE_2D, 0, getGLInternalFormat(m_internalFormat), m_width, m_height, 0, getGLFormat(m_format), getGLType(m_type), NULL);
+		}
 		glBindTexture(GL_TEXTURE_2D, m_depthTexture);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, m_width, m_height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
 		glBindTexture(GL_TEXTURE_2D, 0);
+	}
+
+	void Framebuffer::AddColorAttachment(TextureInternalFormat internalFormat, TextureFormat format, TextureType type) {
+		glBindFramebuffer(GL_FRAMEBUFFER, m_id);
+		glGenTextures(1, &m_colorTexture[m_colorTextureCount]);
+		glBindTexture(GL_TEXTURE_2D, m_colorTexture[m_colorTextureCount]);
+		glTexImage2D(GL_TEXTURE_2D, 0, getGLInternalFormat(internalFormat), m_width, m_height, 0, getGLFormat(format), getGLType(type), NULL);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0+m_colorTextureCount, GL_TEXTURE_2D, m_colorTexture[m_colorTextureCount], 0);
+		m_colorTextureCount++;
+		glBindTexture(GL_TEXTURE_2D, 0);
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	}
 }

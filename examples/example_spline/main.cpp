@@ -218,9 +218,8 @@ int main() {
 
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-
-	ew::Framebuffer pickingFramebuffer(SCREEN_WIDTH,SCREEN_HEIGHT, ew::TextureInternalFormat::RGB32UI, ew::TextureFormat::RGB_INTEGER, ew::TextureType::UINT);
-	mouseSelectFramebuffer = &pickingFramebuffer;
+	ew::Framebuffer sceneFrameBuffer(SCREEN_WIDTH, SCREEN_HEIGHT, ew::TextureInternalFormat::RGBA32F, ew::TextureFormat::RGBA, ew::TextureType::FLOAT);
+	sceneFrameBuffer.AddColorAttachment(ew::TextureInternalFormat::RGB32UI, ew::TextureFormat::RGB_INTEGER, ew::TextureType::UINT);
 
 	//Set up scene
 	MeshRenderer* splineMeshRenderer = &meshRenderers[0];
@@ -253,6 +252,7 @@ int main() {
 		glfwPollEvents();
 		processInput(window);
 
+		sceneFrameBuffer.bind();
 		glClearColor(camera.m_bgColor.x, camera.m_bgColor.y, camera.m_bgColor.z, camera.m_bgColor.w);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
@@ -329,20 +329,11 @@ int main() {
 		skinnedLitShader.setInt("_Texture", 0);
 
 		std::vector<ew::Mat4> transforms = animator.GetFinalBoneMatrices();
-		/*for (size_t i = 0; i < 100; i++)
-		{
-			transforms.push_back(ew::IdentityMatrix());
-		}
-		if (animate) {
-			for (size_t i = 0; i < 100; i++)
-			{
-				transforms[i] = ew::RotateZMatrix(i + time) * transforms[i];
-			}
-		}*/
 		skinnedLitShader.setMat4v("_FinalBoneMatrices", transforms.data(), transforms.size());
 
 		for (size_t i = 0; i < NUM_RENDERERS; i++)
 		{
+			meshRenderers[i].shader->setInt("_ObjectIndex", i + 1);
 			drawMesh(*meshRenderers[i].shader, *meshRenderers[i].model, meshRenderers[i].transform);
 		}
 
@@ -358,8 +349,10 @@ int main() {
 			glDrawArrays(GL_TRIANGLES, 0, 6);
 		}
 
+		//TODO: Render FBO color texture to screen
+		
 		//Render pickable meshes to object picking framebuffer
-		if (glfwGetMouseButton(window,0))
+		/*if (glfwGetMouseButton(window,0))
 		{
 			pickingFramebuffer.bind();
 			glClearColor(0, 0, 0, 0);
@@ -375,7 +368,7 @@ int main() {
 			}
 			pickingFramebuffer.unbind();
 			glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-		}
+		}*/
 
 		//Render UI
 		{
