@@ -1,6 +1,6 @@
 #version 450
 layout(location = 0) out vec4 FragColor;
-layout(location = 1) out vec4 ObjectIDColor;
+layout(location = 1) out uvec4 ObjectIDColor;
 
 in Surface{
 	vec2 UV;
@@ -40,7 +40,7 @@ void main(){
 	vec3 color = texture(_Texture,uv).rgb * lightColor;
 	FragColor = vec4(color,1.0);
 
-	ObjectIDColor = vec4(_ObjectIndex,0,0,1);
+	ObjectIDColor = uvec4(_ObjectIndex,0,0,1);
 //	FragColor = vec4(fs_in.UV,0.0,1.0);
 	//vec3 albedo = normal*0.5+0.5;
 	//FragColor = vec4(albedo,1.0);// vec4(mix(abs(normal),color,0.8),1.0);

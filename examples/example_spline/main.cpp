@@ -130,7 +130,7 @@ void createCubicBezierTrackMesh(ew::Vec3 p0, ew::Vec3 p1, ew::Vec3 p2, ew::Vec3 
 
 
 unsigned int selectionIndex = 0;
-ew::Framebuffer* mouseSelectFramebuffer;
+ew::Framebuffer* sceneFrameBuffer;
 ImGuiTreeNodeFlags base_flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth;
 int selection_mask = (1 << 2);
 
@@ -183,10 +183,10 @@ int main() {
 	ew::Shader unlitShader("assets/unlit.vert", "assets/unlit.frag");
 	ew::Shader litShader("assets/lit.vert", "assets/lit.frag");
 	ew::Shader skinnedLitShader("assets/engine/shaders/skinnedMesh.vert", "assets/lit.frag");
-	ew::Shader pickingShader("assets/engine/shaders/objectPicking.vert", "assets/engine/shaders/objectPicking.frag");
+	//ew::Shader pickingShader("assets/engine/shaders/objectPicking.vert", "assets/engine/shaders/objectPicking.frag");
 	ew::Shader particleShader("assets/particle.vert", "assets/particle.frag");
 	ew::Shader gridShader("assets/engine/shaders/grid.vert", "assets/engine/shaders/grid.frag");
-
+	ew::Shader postProcessShader("assets/postprocess.vert", "assets/postprocess.frag");
 
 	//unsigned int brickTexture = ew::loadTexture("assets/bricks_color.jpg", GL_REPEAT, GL_LINEAR_MIPMAP_LINEAR);
 
@@ -218,8 +218,8 @@ int main() {
 
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-	ew::Framebuffer sceneFrameBuffer(SCREEN_WIDTH, SCREEN_HEIGHT, ew::TextureInternalFormat::RGBA32F, ew::TextureFormat::RGBA, ew::TextureType::FLOAT);
-	sceneFrameBuffer.AddColorAttachment(ew::TextureInternalFormat::RGB32UI, ew::TextureFormat::RGB_INTEGER, ew::TextureType::UINT);
+	sceneFrameBuffer = new ew::Framebuffer(SCREEN_WIDTH, SCREEN_HEIGHT, ew::TextureInternalFormat::RGBA32F, ew::TextureFormat::RGBA, ew::TextureType::FLOAT);
+	sceneFrameBuffer->AddColorAttachment(ew::TextureInternalFormat::RGB32UI, ew::TextureFormat::RGB_INTEGER, ew::TextureType::UINT);
 
 	//Set up scene
 	MeshRenderer* splineMeshRenderer = &meshRenderers[0];
@@ -252,7 +252,7 @@ int main() {
 		glfwPollEvents();
 		processInput(window);
 
-		sceneFrameBuffer.bind();
+		sceneFrameBuffer->bind();
 		glClearColor(camera.m_bgColor.x, camera.m_bgColor.y, camera.m_bgColor.z, camera.m_bgColor.w);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
@@ -331,6 +331,7 @@ int main() {
 		std::vector<ew::Mat4> transforms = animator.GetFinalBoneMatrices();
 		skinnedLitShader.setMat4v("_FinalBoneMatrices", transforms.data(), transforms.size());
 
+		//Draw all meshes
 		for (size_t i = 0; i < NUM_RENDERERS; i++)
 		{
 			meshRenderers[i].shader->setInt("_ObjectIndex", i + 1);
@@ -350,7 +351,15 @@ int main() {
 		}
 
 		//TODO: Render FBO color texture to screen
-		
+		sceneFrameBuffer->unbind();
+		glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		postProcessShader.use();
+		postProcessShader.setInt("_Texture", 0);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, sceneFrameBuffer->GetColorTextureInfo(0).m_id);
+		glDrawArrays(GL_TRIANGLES, 0, 6);
+
 		//Render pickable meshes to object picking framebuffer
 		/*if (glfwGetMouseButton(window,0))
 		{
@@ -490,6 +499,7 @@ int main() {
 				ImGui::End();
 			}
 			
+			selectionIndex = std::min<int>(selectionIndex, NUM_RENDERERS-1);
 			//Draw Inspector
 			{
 				ImGui::Begin("Inspector");
@@ -577,7 +587,7 @@ void onMouseButtonPressed(GLFWwindow* window, int button, int action, int mods)
 		double mouseX, mouseY;
 		glfwGetCursorPos(window, &mouseX, &mouseY);
 		mouseY = SCREEN_HEIGHT - mouseY;
-		ew::PixelInfo pixelInfo = mouseSelectFramebuffer->readPixel((unsigned int)mouseX, (unsigned int)mouseY);
+		ew::PixelInfo pixelInfo = sceneFrameBuffer->readPixel((unsigned int)mouseX, (unsigned int)mouseY, 1);
 		if (pixelInfo.r > 0) {
 			selectionIndex = pixelInfo.r - 1;
 			selection_mask = (1 << selectionIndex);
@@ -588,7 +598,7 @@ void onMouseButtonPressed(GLFWwindow* window, int button, int action, int mods)
 void onWindowResized(GLFWwindow* window, int width, int height) {
 	SCREEN_WIDTH = width;
 	SCREEN_HEIGHT = height;
-	mouseSelectFramebuffer->resize(width, height);
+	sceneFrameBuffer->resize(width, height);
 }
 
 

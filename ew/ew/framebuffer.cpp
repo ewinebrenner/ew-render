@@ -41,22 +41,19 @@ namespace ew {
 		}
 	}
 	Framebuffer::Framebuffer(unsigned int width, unsigned int height, TextureInternalFormat internalFormat, TextureFormat format, TextureType type)
-		:m_width(width), m_height(height), m_internalFormat(internalFormat), m_format(format), m_type(type)
+		:m_width(width), m_height(height)
 	{
 		assert(width > 0 && height > 0);
+
+		GLint prevFBO;
+		glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prevFBO);
 
 		glGenFramebuffers(1, &m_id);
 		glBindFramebuffer(GL_FRAMEBUFFER, m_id);
 
-		//1 color attachment
-		glGenTextures(1, &m_colorTexture[m_colorTextureCount]);
-		glBindTexture(GL_TEXTURE_2D, m_colorTexture[m_colorTextureCount]);
-		glTexImage2D(GL_TEXTURE_2D, 0, getGLInternalFormat(internalFormat), width, height, 0, getGLFormat(format), getGLType(type), NULL);
-		//TODO: Add support for changing filtering
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_colorTexture[m_colorTextureCount], 0);
-		m_colorTextureCount = 1;
+		//First color attachment
+		AddColorAttachment(internalFormat, format, type);
+
 		//Depth buffer
 		glGenTextures(1, &m_depthTexture);
 		glBindTexture(GL_TEXTURE_2D, m_depthTexture);
@@ -69,7 +66,7 @@ namespace ew {
 			exit(1);
 		}
 		glBindTexture(GL_TEXTURE_2D, 0);
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glBindFramebuffer(GL_FRAMEBUFFER, prevFBO);
 	}
 
 	void Framebuffer::bind()
@@ -86,10 +83,10 @@ namespace ew {
 	{
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	}
-	PixelInfo Framebuffer::readPixel(unsigned int x, unsigned int y)
+	PixelInfo Framebuffer::readPixel(unsigned int x, unsigned int y, int textureIndex)
 	{
 		glBindFramebuffer(GL_READ_FRAMEBUFFER, m_id);
-		glReadBuffer(GL_COLOR_ATTACHMENT0);
+		glReadBuffer(GL_COLOR_ATTACHMENT0 + textureIndex);
 		PixelInfo pixelInfo;
 		glReadPixels(x, y, 1, 1, GL_RGB_INTEGER, GL_UNSIGNED_INT, &pixelInfo);
 		glReadBuffer(GL_NONE);
@@ -101,8 +98,9 @@ namespace ew {
 		m_height = height;
 		for (size_t i = 0; i < m_colorTextureCount; i++)
 		{
-			glBindTexture(GL_TEXTURE_2D, m_colorTexture[i]);
-			glTexImage2D(GL_TEXTURE_2D, 0, getGLInternalFormat(m_internalFormat), m_width, m_height, 0, getGLFormat(m_format), getGLType(m_type), NULL);
+			TextureInfo& tex = m_colorTexture[i];
+			glBindTexture(GL_TEXTURE_2D, tex.m_id);
+			glTexImage2D(GL_TEXTURE_2D, 0, getGLInternalFormat(tex.m_internalFormat), m_width, m_height, 0, getGLFormat(tex.m_format), getGLType(tex.m_type), NULL);
 		}
 		glBindTexture(GL_TEXTURE_2D, m_depthTexture);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, m_width, m_height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
@@ -110,15 +108,24 @@ namespace ew {
 	}
 
 	void Framebuffer::AddColorAttachment(TextureInternalFormat internalFormat, TextureFormat format, TextureType type) {
+		GLint prevFBO;
+		glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prevFBO);
+
 		glBindFramebuffer(GL_FRAMEBUFFER, m_id);
-		glGenTextures(1, &m_colorTexture[m_colorTextureCount]);
-		glBindTexture(GL_TEXTURE_2D, m_colorTexture[m_colorTextureCount]);
+
+		TextureInfo& tex = m_colorTexture[m_colorTextureCount];
+		tex.m_format = format;
+		tex.m_internalFormat = internalFormat;
+		tex.m_type = type;
+
+		glGenTextures(1, &tex.m_id);
+		glBindTexture(GL_TEXTURE_2D, tex.m_id);
 		glTexImage2D(GL_TEXTURE_2D, 0, getGLInternalFormat(internalFormat), m_width, m_height, 0, getGLFormat(format), getGLType(type), NULL);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0+m_colorTextureCount, GL_TEXTURE_2D, m_colorTexture[m_colorTextureCount], 0);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0+m_colorTextureCount, GL_TEXTURE_2D, tex.m_id, 0);
 		m_colorTextureCount++;
 		glBindTexture(GL_TEXTURE_2D, 0);
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glBindFramebuffer(GL_FRAMEBUFFER, prevFBO);
 	}
 }

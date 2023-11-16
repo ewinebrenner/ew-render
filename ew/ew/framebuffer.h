@@ -22,6 +22,12 @@ namespace ew {
 	struct PixelInfo {
 		unsigned int r, g, b;
 	};
+	struct TextureInfo {
+		unsigned int m_id; //OpenGL handle
+		TextureInternalFormat m_internalFormat;
+		TextureFormat m_format;
+		TextureType m_type;
+	};
 	const unsigned int MAX_COLOR_ATTACHMENTS = 8;
 	class Framebuffer {
 	public:
@@ -31,18 +37,14 @@ namespace ew {
 		void unbind();
 		inline unsigned int getWidth() { return m_width; }
 		inline unsigned int getHeight() { return m_height; }
-		PixelInfo readPixel(unsigned int x, unsigned int y);
+		PixelInfo readPixel(unsigned int x, unsigned int y, int textureIndex);
 		void AddColorAttachment(TextureInternalFormat internalFormat, TextureFormat format, TextureType type);
-		inline unsigned int GetColorTextureID(int index) { return m_colorTexture[index]; };
+		inline TextureInfo GetColorTextureInfo(int index) { return m_colorTexture[index]; };
 	private:
 		unsigned int m_id;
-		unsigned int m_colorTexture[MAX_COLOR_ATTACHMENTS]; //texture IDs
+		TextureInfo m_colorTexture[MAX_COLOR_ATTACHMENTS]; //texture IDs
 		unsigned int m_colorTextureCount = 0;
 		unsigned int m_depthTexture;
 		unsigned int m_width, m_height;
-
-		TextureInternalFormat m_internalFormat;
-		TextureFormat m_format;
-		TextureType m_type;
 	};
 }
